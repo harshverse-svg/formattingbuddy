@@ -24,7 +24,7 @@
 
 👉 **Try it directly in your browser:** **[https://harshverse-svg.github.io/formattingbuddy/](https://harshverse-svg.github.io/formattingbuddy/)**
 
-*Installs as a standalone PWA and runs completely offline.*
+*Installs as a standalone PWA with local offline capabilities.*\n\n![FormattingBuddy App Preview](assets/screenshots/app-preview.webp)
 
 ---
 
