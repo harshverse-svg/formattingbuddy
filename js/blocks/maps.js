@@ -3,6 +3,16 @@
  * Nominatim rate limit: maximum 1 request per second, responses cached in localStorage.
  */
 
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 const STORAGE_KEY_GEOCACHE = 'formattingbuddy_geocache_v1';
 let geocache = null;
 let lastRequestTime = 0;
@@ -138,10 +148,12 @@ export async function renderMap(containerEl, spec, isDark = false) {
     const geo = await geocodePlace(name);
     if (geo && !geo.notFound) {
       const marker = window.L.marker([geo.lat, geo.lon]);
+      const safeName = escapeHtml(name);
+      const safeNote = escapeHtml(note);
       const popupHtml = `
         <div style="font-family: system-ui; font-size: 13px; line-height: 1.4;">
-          <strong>${name}</strong>
-          ${note ? `<p style="margin-top: 4px; color: #525866;">${note}</p>` : ''}
+          <strong>${safeName}</strong>
+          ${safeNote ? `<p style="margin-top: 4px; color: #525866;">${safeNote}</p>` : ''}
         </div>
       `;
       marker.bindPopup(popupHtml);

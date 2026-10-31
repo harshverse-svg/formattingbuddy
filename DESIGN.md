@@ -19,19 +19,23 @@ FormattingBuddy converts raw, unstructured text and multi-format files (PDF, Wor
 ## 2. Color System & Design Tokens
 
 ### Core Color Foundations
-| Token | Light (Soft Blue) | Dark (Midnight) | Slate (Technical) |
+| Token | Light (Architectural Alabaster) | Dark (Obsidian Luxury) | Slate (Swiss Graphite) |
 |---|---|---|---|
-| `--bg` | `#EAF0FA` | `#0D1220` | `#131823` |
-| `--surface` | `#F5F8FD` | `#151B2D` | `#1B2232` |
-| `--surface-raised` | `#FFFFFF` | `#1C243B` | `#232C40` |
-| `--surface-subtle` | `#E2EAF7` | `#101626` | `#161D2B` |
-| `--border` | `#D3DCEC` | `#25304A` | `#2D374D` |
-| `--text` | `#1B2433` | `#E6EAF5` | `#EDF2F7` |
-| `--text-secondary`| `#3F4D67` | `#B4BFD8` | `#B0BCCE` |
-| `--text-muted` | `#5B6780` | `#8E9AB8` | `#8692A6` |
-| `--accent` | `#4F5BD5` | `#7C86F2` | `#6366F1` |
-| `--accent-hover` | `#434EB8` | `#6B75E0` | `#5254D8` |
-| `--accent-subtle`| `rgba(79, 91, 213, 0.12)` | `rgba(124, 134, 242, 0.16)` | `rgba(99, 102, 241, 0.16)` |
+| --bg | #F6F8FA | #0A0D14 | #0F172A |
+| --surface | #FFFFFF | #111622 | #1E293B |
+| --surface-raised | #FFFFFF | #161C2C | #243248 |
+| --surface-subtle | #EDF2F7 | #1C2337 | #2D3D56 |
+| --border | #E2E8F0 | #222B3F | #334155 |
+| --border-subtle | #EDF2F7 | #182030 | #222F42 |
+| --text | #0F172A | #F1F5F9 | #F8FAFC |
+| --text-secondary | #334155 | #94A3B8 | #CBD5E1 |
+| --text-muted | #64748B | #64748B | #94A3B8 |
+| --accent | #4F46E5 | #6366F1 | #38BDF8 |
+| --accent-hover | #4338CA | #818CF8 | #60A5FA |
+| --accent-subtle | 
+gba(79, 70, 229, 0.08) | 
+gba(99, 102, 241, 0.16) | 
+gba(56, 189, 248, 0.15) |
 
 ### Status Indicators
 - **Success / Validated**: Teal (`#10B981` / `#059669`)

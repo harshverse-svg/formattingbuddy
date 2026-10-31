@@ -485,14 +485,11 @@ function initSettingsUI() {
     // 1. None / Clean Solid card
     const noneCard = document.createElement('div');
     noneCard.className = `wallpaper-card ${currentWp === 'none' ? 'active' : ''}`;
-    noneCard.style.backgroundColor = 'var(--surface-raised)';
-    noneCard.style.display = 'flex';
-    noneCard.style.flexDirection = 'column';
-    noneCard.style.alignItems = 'center';
-    noneCard.style.justifyContent = 'center';
-    noneCard.style.paddingBottom = '18px';
+    noneCard.setAttribute('role', 'button');
+    noneCard.setAttribute('tabindex', '0');
+    noneCard.setAttribute('aria-label', 'Solid Ground (no wallpaper)');
     noneCard.innerHTML = `
-      <div style="font-size:1.3rem; opacity:0.6; line-height:1;">⊘</div>
+      <div class="wallpaper-card-icon">⊘</div>
       <div class="wallpaper-card-name">Solid Ground</div>
     `;
     noneCard.addEventListener('click', () => {
@@ -505,6 +502,9 @@ function initSettingsUI() {
     BUNDLED_WALLPAPERS.forEach((wp) => {
       const card = document.createElement('div');
       card.className = `wallpaper-card ${currentWp === wp.id ? 'active' : ''}`;
+      card.setAttribute('role', 'button');
+      card.setAttribute('tabindex', '0');
+      card.setAttribute('aria-label', wp.name);
       card.style.backgroundImage = `url("${wp.thumb}")`;
       card.innerHTML = `<div class="wallpaper-card-name">${escapeHtml(wp.name)}</div>`;
       card.addEventListener('click', () => {
@@ -519,6 +519,9 @@ function initSettingsUI() {
     if (wallpaperManager.customWallpaperUrl) {
       const customCard = document.createElement('div');
       customCard.className = `wallpaper-card ${currentWp === 'custom' ? 'active' : ''}`;
+      customCard.setAttribute('role', 'button');
+      customCard.setAttribute('tabindex', '0');
+      customCard.setAttribute('aria-label', 'Custom Photo');
       customCard.style.backgroundImage = `url("${wallpaperManager.customWallpaperUrl}")`;
       customCard.innerHTML = `<div class="wallpaper-card-name">Custom Photo</div>`;
       customCard.addEventListener('click', () => {

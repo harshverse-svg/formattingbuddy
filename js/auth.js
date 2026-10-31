@@ -89,6 +89,13 @@ class AuthManager {
     this.lock();
     localStorage.clear();
     sessionStorage.clear();
+    if (window.indexedDB) {
+      try {
+        window.indexedDB.deleteDatabase('formattingbuddy_db_v1');
+      } catch (err) {
+        console.warn('Failed to delete indexedDB:', err);
+      }
+    }
     if ('caches' in window) {
       try {
         const keys = await caches.keys();

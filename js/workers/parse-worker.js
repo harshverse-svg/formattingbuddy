@@ -319,7 +319,7 @@ async function parseTextFile(arrayBuffer, ext, reportProgress) {
    - Normalizes whitespace
    ========================================================================== */
 function cleanExtractedText(pageTexts) {
-  const lineFrequency = {};
+  const lineFrequency = new Map();
   const pageLines = pageTexts.map(pt => pt.split('\n').map(l => l.trim()).filter(l => l.length > 3 && l.length < 100));
 
   for (const lines of pageLines) {
@@ -327,15 +327,16 @@ function cleanExtractedText(pageTexts) {
     for (const l of lines) {
       if (!seenOnThisPage.has(l)) {
         seenOnThisPage.add(l);
-        lineFrequency[l] = (lineFrequency[l] || 0) + 1;
+        lineFrequency.set(l, (lineFrequency.get(l) || 0) + 1);
       }
     }
   }
 
   const threshold = Math.max(2, Math.floor(pageTexts.length * 0.5));
-  const recurringLines = new Set(
-    Object.keys(lineFrequency).filter(l => lineFrequency[l] >= threshold)
-  );
+  const recurringLines = new Set();
+  for (const [line, count] of lineFrequency.entries()) {
+    if (count >= threshold) recurringLines.add(line);
+  }
 
   const cleanedPages = [];
   for (let i = 0; i < pageTexts.length; i++) {

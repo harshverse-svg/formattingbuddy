@@ -54,7 +54,7 @@ export function initMermaid(theme = 'light') {
 
   window.mermaid.initialize({
     startOnLoad: false,
-    securityLevel: 'loose',
+    securityLevel: 'strict',
     theme: theme === 'light' ? 'default' : 'dark',
     themeVariables: vars
   });

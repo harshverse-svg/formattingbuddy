@@ -495,7 +495,9 @@ class ProviderManager {
     try {
       if (providerId === 'gemini') {
         if (!key) throw new Error('Enter Gemini API key first');
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}`);
+        const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models', {
+          headers: { 'x-goog-api-key': key }
+        });
         if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
         const data = await res.json();
         const models = (data.models || [])

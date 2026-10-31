@@ -77,9 +77,10 @@ export async function renderDocumentToElement(markdown, targetEl, options = {}) 
       gfm: true,
       breaks: true
     });
-    html = window.marked.parse(preprocessed);
+    const rawParsed = window.marked.parse(preprocessed);
+    html = sanitizeDocumentHtml(rawParsed);
   } else {
-    html = preprocessed.replace(/\n/g, '<br>');
+    html = sanitizeDocumentHtml(preprocessed.replace(/\n/g, '<br>'));
   }
 
   // Step 3: Add IDs to H1/H2/H3 for smooth TOC navigation
@@ -223,4 +224,44 @@ function showBlockError(blk, bodyEl, actionsEl, errorText, fixCallback) {
 function escapeHtml(str) {
   if (!str) return '';
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+
+/**
+ * Zero-dependency HTML Sanitizer using native DOMParser
+ * Defends against XSS, script injection, iframe embedding, and dangerous URI schemes.
+ */
+export function sanitizeDocumentHtml(dirtyHtml) {
+  if (!dirtyHtml) return '';
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(dirtyHtml, 'text/html');
+
+  const FORBIDDEN_TAGS = ['script', 'iframe', 'object', 'embed', 'style', 'meta', 'link', 'base', 'form', 'input', 'button', 'select', 'textarea'];
+  const forbidden = doc.querySelectorAll(FORBIDDEN_TAGS.join(', '));
+  forbidden.forEach(el => el.remove());
+
+  const all = doc.querySelectorAll('*');
+  all.forEach(el => {
+    const attrs = Array.from(el.attributes);
+    for (const attr of attrs) {
+      const name = attr.name.toLowerCase();
+      if (name.startsWith('on')) {
+        el.removeAttribute(attr.name);
+        continue;
+      }
+      if (name === 'href' || name === 'src' || name === 'action') {
+        const val = attr.value.trim().toLowerCase();
+        if (val.startsWith('javascript:') || val.startsWith('vbscript:') || (val.startsWith('data:') && !val.startsWith('data:image/'))) {
+          el.removeAttribute(attr.name);
+          continue;
+        }
+        if (el.tagName === 'A' && (val.startsWith('http://') || val.startsWith('https://'))) {
+          el.setAttribute('target', '_blank');
+          el.setAttribute('rel', 'noopener noreferrer');
+        }
+      }
+    }
+  });
+
+  return doc.body.innerHTML;
 }
