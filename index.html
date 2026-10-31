@@ -96,11 +96,6 @@
             <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
           </svg>
         </button>
-
-        <!-- Reset App -->
-        <button id="btn-reset-app" class="btn btn-sm btn-danger" aria-label="Reset app and wipe local data" title="Wipe local data and reset passcode">
-          Reset
-        </button>
       </div>
     </header>
 
@@ -559,11 +554,28 @@
         </p>
 
         <div id="settings-providers-container" style="display:flex; flex-direction:column; gap:12px;"></div>
+
+        <!-- Danger Zone: Reset App (Stage 0B) -->
+        <div class="settings-danger-zone" style="margin-top:20px; padding:16px; border:1px solid #fca5a5; border-radius:8px; background:rgba(239, 68, 68, 0.04);">
+          <div style="font-weight:600; color:var(--danger, #ef4444); font-size:0.88rem; margin-bottom:4px;">Danger Zone</div>
+          <p style="font-size:0.78rem; color:var(--text-muted); margin-bottom:12px; line-height:1.4;">
+            Permanently erase all local data on this device: passcode verification hash, encrypted API keys, autosaved drafts, cached OCR pages, and parsed files.
+          </p>
+          <button id="btn-reset-app" class="btn btn-sm btn-danger" type="button" aria-label="Reset app and wipe local data">
+            Reset All Local Data
+          </button>
+        </div>
       </div>
       <div class="modal-footer">
         <button id="btn-done-settings" class="btn btn-primary" type="button">Done</button>
       </div>
     </div>
+  </div>
+
+  <!-- New Version Available Banner (Stage 0B) -->
+  <div id="update-banner" class="update-banner" style="display:none;" role="alert">
+    <span>A new version of FormattingBuddy is available.</span>
+    <button id="btn-reload-update" class="btn btn-sm btn-primary" type="button">Reload</button>
   </div>
 
   <!-- Toast Notifications Container -->

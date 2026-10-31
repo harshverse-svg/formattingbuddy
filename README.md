@@ -61,7 +61,7 @@ Designed with a minimal, modern Linear/Notion-inspired aesthetic adhering to str
 
 ```
 +-------------------------------------------------------------------------------------------------------------------+
-|  [Logo] FormattingBuddy         ● Ready    [Install PWA] [Help (?)] [Theme] [Settings (Keys)] [Lock] [Reset]      |
+|  [Logo] FormattingBuddy         ● Ready    [Install PWA] [Help (?)] [Theme] [Settings (Keys & Reset)] [Lock]      |
 +----------------------------------------------------+--------------------------------------------------------------+
 | LEFT: Source Document & Options                    | RIGHT: Formatted Document & Preview                          |
 |                                                    |                                                              |
@@ -136,14 +136,18 @@ Both modes cache page transcripts in **IndexedDB** so you never re-run OCR on th
 +---------------------------------------------------------------------------------------+
 ```
 
-1. **Hardware-Grade Web Crypto**:
-   - Master passcode derived via **PBKDF2** (100,000 iterations, SHA-256) with a cryptographically secure 16-byte random salt.
-   - In-memory **AES-GCM 256-bit** key encrypts sensitive provider credentials.
-2. **Ephemeral Memory Storage**:
-   - API keys are decrypted only in JavaScript runtime memory while the workspace is unlocked.
-   - Keys are wiped from memory immediately upon locking or after **15 minutes of inactivity**.
-   - Keys are never placed in URLs, never logged to console, and never sent anywhere except directly to the provider endpoint chosen by the user.
-3. **Strict Content-Security-Policy (CSP)**:
+1. **Web Crypto Architecture**:
+   - Master passcode derived via standard browser **PBKDF2** (100,000 iterations, SHA-256) with a cryptographically secure 16-byte random salt.
+   - In-memory **AES-GCM 256-bit** key encrypts sensitive provider credentials in local storage.
+2. **Strict Data Privacy**:
+   - **API Keys**: Stored encrypted in local storage, decrypted only in memory when unlocked, and sent **ONLY** to the specific AI provider you select.
+   - **Document Text**: Transmitted **ONLY** to your selected AI provider for document formatting.
+   - **Place Names**: Queried against OpenStreetMap Nominatim strictly for map block geocoding.
+   - **Local OCR**: Scanned document images are processed entirely on your device inside a WebAssembly worker (Tesseract.js)—images never leave your computer.
+3. **Offline Scope**:
+   - Offline mode works for the application shell, document parsers, local OCR, and export modules (PDF, DOCX, HTML, ZIP, Markdown).
+   - Remote AI completions require network connectivity to reach your chosen provider.
+4. **Strict Content-Security-Policy (CSP)**:
    - Restricts script execution to local files (`'self'`).
    - All vendor libraries are bundled locally in the repository (no runtime CDNs).
 
@@ -151,7 +155,7 @@ Both modes cache page transcripts in **IndexedDB** so you never re-run OCR on th
 
 ## 🤖 Supported AI Providers
 
-FormattingBuddy integrates 8 AI providers with support for custom models, base URLs, and an intelligent **Auto (fallback)** engine:
+FormattingBuddy integrates 8 AI providers with editable model fields, a **Refresh models** discovery button, and an intelligent **Auto (fallback)** engine:
 
 | Provider | Default Model | Get an API Key | Key Features |
 | :--- | :--- | :--- | :--- |
@@ -161,7 +165,7 @@ FormattingBuddy integrates 8 AI providers with support for custom models, base U
 | **Mistral AI** | `mistral-small-latest` | [console.mistral.ai/api-keys](https://console.mistral.ai/api-keys) | High reasoning quality and multilingual support |
 | **Ollama Cloud / Local** | `llama3.2` | [ollama.com/settings/keys](https://ollama.com/settings/keys) | Cloud or local self-hosted endpoint (`localhost:11434`) |
 | **Hugging Face** | `Qwen/Qwen2.5-72B-Instruct` | [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens) | Serverless inference router for open weights |
-| **Anthropic Claude** | `claude-3-5-haiku-20241022` | [platform.claude.com/settings/keys](https://platform.claude.com/settings/keys) | Direct browser-access enabled API calls |
+| **Anthropic Claude** | `claude-haiku-5-5` | [platform.claude.com/settings/keys](https://platform.claude.com/settings/keys) | Direct browser-access enabled API calls |
 | **Custom OpenAI-Compatible**| Custom | Provider-specific | Compatible with vLLM, LM Studio, Together, Perplexity |
 
 ### 🔄 Auto (Fallback) Mode
@@ -204,7 +208,7 @@ Want to test without pasting your own text? Use the **Load Sample** menu:
 
 ## 📱 PWA Installation
 
-FormattingBuddy is a certified Progressive Web App that works completely offline once cached.
+FormattingBuddy is a Progressive Web App (PWA). Once installed or cached, the application shell, document parsers, local OCR engine, and export generators operate offline without an internet connection.
 
 - **Desktop (Chrome / Edge / Brave)**:
   Click the **"Install"** button in the top navigation bar, or click the install icon in the URL bar.

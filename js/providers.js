@@ -61,7 +61,7 @@ export const PROVIDER_DEFS = {
   claude: {
     id: 'claude',
     name: 'Anthropic Claude',
-    defaultModel: 'claude-3-5-haiku-20241022',
+    defaultModel: 'claude-haiku-5-5',
     getKeyUrl: 'https://platform.claude.com/settings/keys',
     badge: 'Advanced',
     needsBaseUrl: false
@@ -485,6 +485,103 @@ class ProviderManager {
 
     const data = await res.json();
     return data.choices?.[0]?.message?.content || '';
+  }
+
+  async fetchAvailableModels(providerId) {
+    const key = this.getKey(providerId);
+    const s = this.getSettings(providerId);
+    const baseUrl = s.baseUrl || PROVIDER_DEFS[providerId]?.defaultBaseUrl || '';
+
+    try {
+      if (providerId === 'gemini') {
+        if (!key) throw new Error('Enter Gemini API key first');
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        const data = await res.json();
+        const models = (data.models || [])
+          .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent'))
+          .map(m => m.name.replace(/^models\//, ''));
+        return models.length ? models : ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash'];
+      }
+
+      if (providerId === 'groq') {
+        if (!key) throw new Error('Enter Groq API key first');
+        const res = await fetch('https://api.groq.com/openai/v1/models', {
+          headers: { 'Authorization': `Bearer ${key}` }
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        const data = await res.json();
+        return (data.data || []).map(m => m.id);
+      }
+
+      if (providerId === 'openrouter') {
+        const res = await fetch('https://openrouter.ai/api/v1/models');
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        const data = await res.json();
+        return (data.data || []).map(m => m.id).slice(0, 50);
+      }
+
+      if (providerId === 'mistral') {
+        if (!key) throw new Error('Enter Mistral API key first');
+        const res = await fetch('https://api.mistral.ai/v1/models', {
+          headers: { 'Authorization': `Bearer ${key}` }
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        const data = await res.json();
+        return (data.data || []).map(m => m.id);
+      }
+
+      if (providerId === 'ollama') {
+        const cleanBase = (baseUrl || 'http://localhost:11434').replace(/\/v1\/?$/, '');
+        const res = await fetch(`${cleanBase}/api/tags`).catch(() => fetch(`${baseUrl}/models`));
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        const data = await res.json();
+        if (Array.isArray(data.models)) return data.models.map(m => m.name || m.model);
+        if (Array.isArray(data.data)) return data.data.map(m => m.id);
+        return ['llama3.2', 'mistral', 'qwen2.5'];
+      }
+
+      if (providerId === 'huggingface') {
+        const res = await fetch('https://huggingface.co/api/models?pipeline_tag=text-generation&sort=downloads&direction=-1&limit=25');
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        const data = await res.json();
+        return data.map(m => m.id);
+      }
+
+      if (providerId === 'claude') {
+        if (!key) throw new Error('Enter Claude API key first');
+        try {
+          const res = await fetch('https://api.anthropic.com/v1/models', {
+            headers: {
+              'x-api-key': key,
+              'anthropic-version': '2023-06-01',
+              'anthropic-dangerous-direct-browser-access': 'true'
+            }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data.data) && data.data.length) {
+              return data.data.map(m => m.id);
+            }
+          }
+        } catch (_) {}
+        // Curated supported models for Anthropic
+        return ['claude-haiku-5-5', 'claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229'];
+      }
+
+      if (providerId === 'custom') {
+        if (!baseUrl) throw new Error('Specify custom Base URL first');
+        const headers = key ? { 'Authorization': `Bearer ${key}` } : {};
+        const res = await fetch(`${baseUrl.replace(/\/+$/, '')}/models`, { headers });
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        const data = await res.json();
+        return (data.data || []).map(m => m.id);
+      }
+    } catch (err) {
+      console.warn(`Failed fetching models for ${providerId}:`, err);
+      throw err;
+    }
+    return [];
   }
 }
 

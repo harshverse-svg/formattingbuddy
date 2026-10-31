@@ -1,10 +1,10 @@
-const CACHE_NAME = 'formattingbuddy-v5';
+const BUILD_VERSION = '__BUILD_COMMIT_SHA__';
+const CACHE_NAME = BUILD_VERSION.startsWith('__') ? 'formattingbuddy-v6-dev' : `formattingbuddy-${BUILD_VERSION}`;
 
 const STATIC_ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
-  './manifest.json',
   './css/main.css',
   './js/app.js',
   './js/crypto.js',
@@ -124,6 +124,24 @@ self.addEventListener('fetch', (event) => {
           return cachedResponse || fetchPromise;
         });
       })
+    );
+    return;
+  }
+
+  // Navigation requests and index.html: strictly Network First with cache fallback
+  if (event.request.mode === 'navigate' || url.pathname.endsWith('/') || url.pathname.endsWith('index.html')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseClone);
+            });
+          }
+          return networkResponse;
+        })
+        .catch(() => caches.match('./index.html') || caches.match(event.request))
     );
     return;
   }

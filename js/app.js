@@ -77,9 +77,27 @@ function initPwa() {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('./sw.js').then((reg) => {
         console.log('FormattingBuddy SW registered:', reg.scope);
+        // Detect updates per deploy
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          if (!newWorker) return;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              const banner = document.getElementById('update-banner');
+              if (banner) banner.style.display = 'flex';
+            }
+          });
+        });
       }).catch((err) => {
         console.warn('FormattingBuddy SW registration failed:', err);
       });
+    });
+  }
+
+  const reloadUpdateBtn = document.getElementById('btn-reload-update');
+  if (reloadUpdateBtn) {
+    reloadUpdateBtn.addEventListener('click', () => {
+      window.location.reload();
     });
   }
 
@@ -451,10 +469,12 @@ function initSettingsUI() {
             <button class="btn btn-sm btn-outline" id="test-${id}" type="button">Test</button>
           </div>
 
-          <div class="input-row" style="justify-content: space-between; align-items: center;">
-            <div style="display:flex; align-items:center; gap:6px;">
+          <div class="input-row" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <div style="display:flex; align-items:center; gap:6px; flex-wrap: wrap;">
               <span style="font-size:0.75rem; color:var(--text-muted);">Model:</span>
-              <input type="text" class="text-input" style="height:28px; width:190px; font-size:0.8rem;" id="model-${id}" value="${escapeHtml(s.model || def.defaultModel)}">
+              <input type="text" class="text-input" style="height:28px; width:160px; font-size:0.8rem;" id="model-${id}" value="${escapeHtml(s.model || def.defaultModel)}" list="models-list-${id}" placeholder="Model ID">
+              <datalist id="models-list-${id}"></datalist>
+              <button class="btn btn-sm btn-outline" id="refresh-models-${id}" type="button" title="Refresh model list from provider">Refresh</button>
             </div>
             ${def.getKeyUrl ? `
               <a href="${def.getKeyUrl}" target="_blank" rel="noopener noreferrer" style="font-size:0.78rem; color:var(--accent); text-decoration:none;">Get a key &rarr;</a>
@@ -483,6 +503,32 @@ function initSettingsUI() {
         providers.updateSettings(id, { model: modelInput.value.trim() });
         updateStatusBarProvider();
       });
+
+      const refreshBtn = card.querySelector(`#refresh-models-${id}`);
+      const datalistEl = card.querySelector(`#models-list-${id}`);
+      if (refreshBtn) {
+        refreshBtn.addEventListener('click', async () => {
+          refreshBtn.disabled = true;
+          refreshBtn.textContent = '...';
+          try {
+            const models = await providers.fetchAvailableModels(id);
+            if (datalistEl) {
+              datalistEl.innerHTML = '';
+              models.forEach((m) => {
+                const opt = document.createElement('option');
+                opt.value = m;
+                datalistEl.appendChild(opt);
+              });
+            }
+            showToast(`Found ${models.length} model(s) for ${def.name}. Choose from list or edit freely.`, 'success');
+          } catch (err) {
+            showToast(`Failed loading models: ${err.message}`, 'error');
+          } finally {
+            refreshBtn.disabled = false;
+            refreshBtn.textContent = 'Refresh';
+          }
+        });
+      }
 
       if (baseUrlInput) {
         baseUrlInput.addEventListener('change', () => {

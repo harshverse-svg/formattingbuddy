@@ -1418,3 +1418,22 @@ button, input, select, textarea {
   font-size: 0.72rem;
   color: var(--text-secondary);
 }
+
+/* Service Worker Update Banner (Stage 0B) */
+.update-banner {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background-color: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 0.86rem;
+  font-weight: 500;
+  z-index: 10000;
+}
