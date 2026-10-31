@@ -1,22 +1,48 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <rect width="512" height="512" rx="112" fill="#5B5BD6"/>
-  <!-- Document background -->
-  <rect x="116" y="86" width="280" height="340" rx="20" fill="#FFFFFF"/>
-  <!-- Fold corner accent -->
-  <path d="M326 86 L396 156 L346 156 C335 156 326 147 326 136 Z" fill="#E0E2FD"/>
-  <!-- Document header lines -->
-  <rect x="156" y="146" width="130" height="18" rx="9" fill="#5B5BD6"/>
-  <rect x="156" y="184" width="200" height="10" rx="5" fill="#9CA3AF"/>
-  <rect x="156" y="206" width="170" height="10" rx="5" fill="#D1D5DB"/>
-  <!-- Mini chart simulation -->
-  <rect x="156" y="246" width="200" height="80" rx="10" fill="#F3F4F6"/>
-  <rect x="180" y="286" width="20" height="30" rx="4" fill="#5B5BD6"/>
-  <rect x="216" y="266" width="20" height="50" rx="4" fill="#818CF8"/>
-  <rect x="252" y="276" width="20" height="40" rx="4" fill="#5B5BD6"/>
-  <rect x="288" y="256" width="20" height="60" rx="4" fill="#818CF8"/>
-  <circle cx="330" cy="270" r="10" fill="#10B981"/>
-  <!-- Bottom lines -->
-  <rect x="156" y="348" width="180" height="10" rx="5" fill="#9CA3AF"/>
-  <rect x="156" y="370" width="120" height="10" rx="5" fill="#D1D5DB"/>
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4F5BD5"/>
+      <stop offset="100%" stop-color="#3D46B0"/>
+    </linearGradient>
+    <linearGradient id="docGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#F5F8FD"/>
+      <stop offset="100%" stop-color="#EAF0FA"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Outer App Container -->
+  <rect width="512" height="512" rx="120" fill="url(#bgGrad)"/>
+  
+  <!-- Document Sheet -->
+  <rect x="110" y="80" width="292" height="352" rx="24" fill="url(#docGrad)" stroke="#D3DCEC" stroke-width="4"/>
+  
+  <!-- Fold Corner -->
+  <path d="M322 80 L402 160 L346 160 C333 160 322 149 322 136 Z" fill="#D3DCEC"/>
+  
+  <!-- Document Title Bar -->
+  <rect x="150" y="146" width="130" height="18" rx="9" fill="#4F5BD5"/>
+  <rect x="150" y="184" width="190" height="10" rx="5" fill="#5B6780"/>
+  <rect x="150" y="206" width="160" height="10" rx="5" fill="#8E9AB8"/>
+  
+  <!-- Mini Diagram Nodes (Hierarchical Workflow) -->
+  <rect x="150" y="248" width="212" height="96" rx="14" fill="#EAF0FA" stroke="#D3DCEC" stroke-width="2"/>
+  
+  <!-- Node A -->
+  <circle cx="186" cy="296" r="14" fill="#4F5BD5"/>
+  <!-- Connecting line -->
+  <line x1="200" y1="296" x2="242" y2="296" stroke="#4F5BD5" stroke-width="4" stroke-dasharray="4 2"/>
+  <!-- Node B -->
+  <rect x="242" y="284" width="24" height="24" rx="6" fill="#0284C7"/>
+  <!-- Connecting line -->
+  <line x1="266" y1="296" x2="308" y2="296" stroke="#4F5BD5" stroke-width="4"/>
+  <!-- Node C -->
+  <circle cx="322" cy="296" r="14" fill="#0D9488"/>
+  
+  <!-- Lower Text Lines -->
+  <rect x="150" y="366" width="200" height="10" rx="5" fill="#5B6780"/>
+  <rect x="150" y="388" width="130" height="10" rx="5" fill="#8E9AB8"/>
+  
+  <!-- AI Sparkle Star (Top Right of Document) -->
+  <path d="M410 70 C410 95 425 110 450 110 C425 110 410 125 410 150 C410 125 395 110 370 110 C395 110 410 95 410 70 Z" fill="#FBBF24"/>
+  <circle cx="454" cy="66" r="6" fill="#FBBF24"/>
 </svg>
-

@@ -1,9 +1,10 @@
-const CACHE_NAME = 'formattingbuddy-v3';
+const CACHE_NAME = 'formattingbuddy-v4';
 
 const STATIC_ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
+  './manifest.json',
   './css/main.css',
   './js/app.js',
   './js/crypto.js',
@@ -34,6 +35,7 @@ const STATIC_ASSETS = [
   './vendor/html2canvas.min.js',
   './vendor/jszip.min.js',
   './assets/icons/icon.svg',
+  './assets/icons/wordmark.svg',
   './assets/icons/icon-192.png',
   './assets/icons/icon-512.png'
 ];

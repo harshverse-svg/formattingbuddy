@@ -34,8 +34,8 @@ export function extractToc(markdown) {
  * Render complete Markdown string to interactive DOM inside previewElement
  */
 export async function renderDocumentToElement(markdown, targetEl, options = {}) {
-  const isDark = options.isDark || document.documentElement.classList.contains('dark');
-  initMermaid(isDark ? 'dark' : 'light');
+  const theme = options.theme || document.documentElement.getAttribute('data-theme') || 'light';
+  initMermaid(theme);
 
   if (!markdown || !markdown.trim()) {
     targetEl.innerHTML = `
@@ -122,7 +122,7 @@ export async function renderDocumentToElement(markdown, targetEl, options = {}) 
 
   // Step 7: Asynchronously render and validate each block
   for (const blk of blocks) {
-    renderBlock(blk, isDark, options.onBlockFix);
+    renderBlock(blk, theme, options.onBlockFix);
   }
 }
 
@@ -140,7 +140,7 @@ function getBlockLabel(type) {
   return 'Block';
 }
 
-async function renderBlock(blk, isDark, onBlockFix) {
+async function renderBlock(blk, theme, onBlockFix) {
   const bodyEl = document.getElementById(`block-body-${blk.index}`);
   const actionsEl = document.getElementById(`block-actions-${blk.index}`);
   if (!bodyEl) return;
@@ -160,7 +160,7 @@ async function renderBlock(blk, isDark, onBlockFix) {
             const fixedCode = await repairMermaidWithAI(blk.code, validation.error);
             blk.code = fixedCode;
             if (onBlockFix) onBlockFix(blk);
-            await renderBlock(blk, isDark, onBlockFix);
+            await renderBlock(blk, theme, onBlockFix);
           } catch (err) {
             showBlockError(blk, bodyEl, actionsEl, `Fix failed: ${err.message}`);
           }
@@ -181,7 +181,7 @@ async function renderBlock(blk, isDark, onBlockFix) {
     try {
       bodyEl.innerHTML = `<div class="chart-container"><canvas id="chart-canvas-${blk.index}"></canvas></div>`;
       const canvas = document.getElementById(`chart-canvas-${blk.index}`);
-      renderChart(canvas, blk.code, isDark);
+      renderChart(canvas, blk.code, theme);
       if (actionsEl) actionsEl.innerHTML = '';
     } catch (err) {
       showBlockError(blk, bodyEl, actionsEl, err.message);
@@ -190,7 +190,8 @@ async function renderBlock(blk, isDark, onBlockFix) {
     try {
       bodyEl.innerHTML = `<div class="map-container" id="map-wrap-${blk.index}"></div>`;
       const mapWrap = document.getElementById(`map-wrap-${blk.index}`);
-      const { warnings } = await renderMap(mapWrap, blk.code, isDark);
+      const isDarkMap = theme === 'dark' || theme === 'slate';
+      const { warnings } = await renderMap(mapWrap, blk.code, isDarkMap);
       if (warnings && warnings.length > 0 && actionsEl) {
         actionsEl.innerHTML = `<span class="badge" style="font-size:0.72rem;background:var(--warning-subtle);color:var(--warning);padding:2px 6px;border-radius:4px;">${warnings.length} place(s) unmapped</span>`;
       } else if (actionsEl) {

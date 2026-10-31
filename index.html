@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="FormattingBuddy - Convert long plain text into formatted documents with headings, tables, diagrams, charts, and maps.">
-  <meta name="theme-color" content="#5B5BD6">
+  <meta name="theme-color" content="#4F5BD5">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://generativelanguage.googleapis.com https://api.groq.com https://openrouter.ai https://api.mistral.ai https://api.ollama.com https://api-inference.huggingface.co https://api.anthropic.com https://nominatim.openstreetmap.org https://tile.openstreetmap.org http://localhost:* https://*; font-src 'self';">
 
   <title>FormattingBuddy - Text to Document</title>
@@ -31,12 +31,21 @@
   <script src="vendor/jszip.min.js"></script>
 </head>
 <body>
+  <!-- Splash Screen (Stage 2: 1s logo + tagline, 1x per session, skipped on reduced-motion) -->
+  <div id="fb-splash" class="fb-splash-screen" aria-hidden="true">
+    <div class="fb-splash-content">
+      <img src="assets/icons/icon.svg" alt="FormattingBuddy Logo" class="fb-splash-logo" width="80" height="80">
+      <h1 class="fb-splash-title">FormattingBuddy</h1>
+      <p class="fb-splash-tagline">Turn messy text into clean documents</p>
+    </div>
+  </div>
+
   <div id="app-root">
     <!-- Top Header -->
     <header class="app-header">
       <div class="brand">
         <img src="assets/icons/icon.svg" alt="FormattingBuddy Logo" class="brand-icon">
-        <span>FormattingBuddy</span>
+        <span class="brand-text">Formatting<span style="color:var(--accent);">Buddy</span></span>
       </div>
 
       <div class="header-status">

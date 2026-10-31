@@ -18,6 +18,7 @@ let deferredInstallPrompt = null;
 
 // Initialize app when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
+  initSplash();
   initPwa();
   initTheme();
   initAuthUI();
@@ -27,6 +28,30 @@ document.addEventListener('DOMContentLoaded', () => {
   initSamplesUI();
   restoreState();
 });
+
+/* ==========================================================================
+   0. Splash Screen (Stage 2: 1s, 1x per session, skipped on reduced motion)
+   ========================================================================== */
+function initSplash() {
+  const splash = document.getElementById('fb-splash');
+  if (!splash) return;
+
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const alreadyShown = sessionStorage.getItem('fb_splash_shown');
+
+  if (reducedMotion || alreadyShown) {
+    splash.remove();
+    return;
+  }
+
+  sessionStorage.setItem('fb_splash_shown', 'true');
+  setTimeout(() => {
+    splash.classList.add('splash-fade-out');
+    setTimeout(() => {
+      splash.remove();
+    }, 260);
+  }, 1000);
+}
 
 /* ==========================================================================
    1. PWA & Service Worker
@@ -68,7 +93,7 @@ function initPwa() {
 }
 
 /* ==========================================================================
-   2. Theme Toggle
+   2. Theme Switcher (Stage 1: 3 Themes - Light Soft Blue, Dark Midnight, Slate)
    ========================================================================== */
 function initTheme() {
   const currentTheme = state.getTheme();
@@ -79,9 +104,11 @@ function initTheme() {
     updateThemeIcon(themeToggleBtn, currentTheme);
     themeToggleBtn.addEventListener('click', () => {
       const active = state.getTheme();
-      const next = active === 'dark' ? 'light' : 'dark';
+      // Cycle: light -> dark -> slate -> light
+      const next = active === 'light' ? 'dark' : (active === 'dark' ? 'slate' : 'light');
       state.setTheme(next);
       updateThemeIcon(themeToggleBtn, next);
+      showToast(`Switched theme to ${getThemeLabel(next)}`, 'info');
       // Re-render current document to update diagram & chart colors
       const currentMd = state.get().markdownOutput;
       if (currentMd) {
@@ -91,11 +118,27 @@ function initTheme() {
   }
 }
 
+function getThemeLabel(theme) {
+  if (theme === 'dark') return 'Midnight (Dark)';
+  if (theme === 'slate') return 'Slate (Gray-Blue)';
+  return 'Soft Blue (Light)';
+}
+
 function updateThemeIcon(btn, theme) {
-  btn.innerHTML = theme === 'dark'
-    ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>`
-    : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
-  btn.setAttribute('aria-label', `Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`);
+  const label = getThemeLabel(theme);
+  btn.setAttribute('aria-label', `Theme: ${label}. Click to cycle.`);
+  btn.setAttribute('title', `Theme: ${label} (Click to switch)`);
+
+  if (theme === 'dark') {
+    // Moon for Midnight
+    btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
+  } else if (theme === 'slate') {
+    // Slate layer/orbital icon
+    btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>`;
+  } else {
+    // Sun for Soft Blue
+    btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>`;
+  }
 }
 
 /* ==========================================================================

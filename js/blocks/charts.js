@@ -2,21 +2,45 @@
  * FormattingBuddy - Chart Block Renderer using Chart.js
  */
 
-const PALETTE = [
-  '#5B5BD6', // Primary Indigo
-  '#818CF8', // Light Indigo
-  '#10B981', // Emerald
-  '#F59E0B', // Amber
-  '#06B6D4', // Cyan
-  '#EC4899', // Pink
-  '#6366F1', // Violet
-  '#3B82F6'  // Blue
-];
+const PALETTES = {
+  light: [
+    '#4F5BD5', // Primary Indigo
+    '#0284C7', // Sky
+    '#0D9488', // Teal
+    '#D97706', // Amber
+    '#E11D48', // Rose
+    '#8B5CF6', // Purple
+    '#3B82F6'  // Blue
+  ],
+  dark: [
+    '#7C86F2', // Light Indigo
+    '#38BDF8', // Sky
+    '#2DD4BF', // Teal
+    '#FBBF24', // Amber
+    '#FB7185', // Rose
+    '#A78BFA', // Purple
+    '#60A5FA'  // Blue
+  ],
+  slate: [
+    '#60A5FA', // Blue accent
+    '#38BDF8', // Sky
+    '#2DD4BF', // Teal
+    '#FBBF24', // Amber
+    '#FB7185', // Rose
+    '#A78BFA', // Purple
+    '#818CF8'  // Indigo
+  ]
+};
 
-export function renderChart(canvasEl, spec, isDark = false) {
+export function renderChart(canvasEl, spec, currentTheme = 'light') {
   if (typeof window.Chart === 'undefined') {
     throw new Error('Chart.js library is not loaded');
   }
+
+  // Support boolean or string theme
+  const theme = typeof currentTheme === 'string'
+    ? currentTheme
+    : (currentTheme ? 'dark' : 'light');
 
   // Parse JSON if passed as string
   let config = spec;
@@ -41,27 +65,48 @@ export function renderChart(canvasEl, spec, isDark = false) {
     }
   }
 
-  // Style datasets according to current theme
-  const textColor = isDark ? '#f4f5f7' : '#121316';
-  const textMuted = isDark ? '#9aa1af' : '#687082';
-  const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)';
+  // Theme-specific text & grid colors (strictly no pure white or black)
+  let textColor = '#1B2433';
+  let textMuted = '#5B6780';
+  let gridColor = 'rgba(27, 36, 51, 0.08)';
+  let tooltipBg = '#F5F8FD';
+  let tooltipBorder = '#D3DCEC';
+  let pieBorder = '#F5F8FD';
+
+  if (theme === 'dark') {
+    textColor = '#E6EAF5';
+    textMuted = '#8E9AB8';
+    gridColor = 'rgba(230, 234, 245, 0.08)';
+    tooltipBg = '#151B2D';
+    tooltipBorder = '#25304A';
+    pieBorder = '#151B2D';
+  } else if (theme === 'slate') {
+    textColor = '#E2E8F0';
+    textMuted = '#94A3B8';
+    gridColor = 'rgba(226, 232, 240, 0.08)';
+    tooltipBg = '#273140';
+    tooltipBorder = '#384556';
+    pieBorder = '#273140';
+  }
+
+  const palette = PALETTES[theme] || PALETTES.light;
 
   const styledDatasets = datasets.map((ds, idx) => {
-    const baseColor = PALETTE[idx % PALETTE.length];
+    const baseColor = palette[idx % palette.length];
     const isPieOrDoughnut = type === 'pie' || type === 'doughnut';
 
     if (isPieOrDoughnut) {
       return {
         ...ds,
-        backgroundColor: labels.map((_, i) => PALETTE[i % PALETTE.length]),
-        borderColor: isDark ? '#15181e' : '#ffffff',
+        backgroundColor: labels.map((_, i) => palette[i % palette.length]),
+        borderColor: pieBorder,
         borderWidth: 2
       };
     }
 
     return {
       ...ds,
-      backgroundColor: type === 'line' ? `${baseColor}20` : baseColor,
+      backgroundColor: type === 'line' ? `${baseColor}24` : baseColor,
       borderColor: baseColor,
       borderWidth: 2,
       borderRadius: type === 'bar' ? 4 : 0,
@@ -98,10 +143,10 @@ export function renderChart(canvasEl, spec, isDark = false) {
           }
         },
         tooltip: {
-          backgroundColor: isDark ? '#1c2027' : '#ffffff',
+          backgroundColor: tooltipBg,
           titleColor: textColor,
           bodyColor: textColor,
-          borderColor: isDark ? '#282e39' : '#e2e4e9',
+          borderColor: tooltipBorder,
           borderWidth: 1,
           padding: 10,
           cornerRadius: 8

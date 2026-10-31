@@ -44,10 +44,14 @@ When working with long raw texts, meeting transcripts, unorganized notes, resear
 ## 📐 Layout & Interface Design
 
 Designed with a minimal, modern Linear/Notion-inspired aesthetic:
-- **Palette**: Neutral surfaces with a single indigo accent (`#5B5BD6`).
-- **Modes**: Automatic light and dark theme with seamless manual toggle.
+- **3 Cohesive Themes**:
+  - **Light (Soft Blue)**: bg `#EAF0FA`, surface `#F5F8FD`, border `#D3DCEC`, text `#1B2433`, muted `#5B6780`, accent `#4F5BD5`. (No harsh pure white or pure black).
+  - **Dark (Midnight)**: bg `#0D1220`, surface `#151B2D`, border `#25304A`, text `#E6EAF5`, muted `#8E9AB8`, accent `#7C86F2`.
+  - **Slate (Gray-Blue)**: bg `#1E2530`, surface `#273140`, border `#384556`, text `#E2E8F0`, muted `#94A3B8`, accent `#60A5FA`.
+- **Status Colors per Theme**: Sky (Info), Teal (Success), Amber (Warning), Rose (Error).
+- **Logo & Splash**: Vector document glyph with AI sparkle node, official wordmark, and a clean 1-second session splash screen.
 - **Responsive Split Screen**: Two panels on desktop (`Source Text` on left, `Formatted Document` on right), and intuitive tab navigation on mobile.
-- **Performance**: 150ms transitions, zero heavy background animation loops, lightweight CPU footprint.
+- **Performance**: 150ms transitions, zero heavy background animation loops, lightweight CPU footprint. Strictly AA contrast compliant.
 
 ```
 +---------------------------------------------------------------------------------------------------+

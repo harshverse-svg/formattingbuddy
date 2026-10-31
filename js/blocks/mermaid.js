@@ -12,22 +12,51 @@ export function initMermaid(theme = 'light') {
     return;
   }
 
-  const isDark = theme === 'dark' || document.documentElement.classList.contains('dark');
+  let vars = {};
+  if (theme === 'dark') {
+    vars = {
+      primaryColor: '#7C86F2',
+      primaryTextColor: '#E6EAF5',
+      primaryBorderColor: '#25304A',
+      lineColor: '#7C86F2',
+      secondaryColor: '#202A44',
+      tertiaryColor: '#151B2D',
+      background: '#151B2D',
+      mainBkg: '#1C243B',
+      nodeBorder: '#7C86F2'
+    };
+  } else if (theme === 'slate') {
+    vars = {
+      primaryColor: '#60A5FA',
+      primaryTextColor: '#E2E8F0',
+      primaryBorderColor: '#384556',
+      lineColor: '#60A5FA',
+      secondaryColor: '#384556',
+      tertiaryColor: '#273140',
+      background: '#273140',
+      mainBkg: '#303B4C',
+      nodeBorder: '#60A5FA'
+    };
+  } else {
+    // Light (Soft Blue) - never pure white or pure black
+    vars = {
+      primaryColor: '#4F5BD5',
+      primaryTextColor: '#1B2433',
+      primaryBorderColor: '#D3DCEC',
+      lineColor: '#4F5BD5',
+      secondaryColor: '#E2EAF5',
+      tertiaryColor: '#F5F8FD',
+      background: '#F5F8FD',
+      mainBkg: '#F8FAFE',
+      nodeBorder: '#4F5BD5'
+    };
+  }
+
   window.mermaid.initialize({
     startOnLoad: false,
     securityLevel: 'loose',
-    theme: isDark ? 'dark' : 'default',
-    themeVariables: {
-      primaryColor: '#5B5BD6',
-      primaryTextColor: isDark ? '#f4f5f7' : '#121316',
-      primaryBorderColor: isDark ? '#3d4452' : '#cbd5e1',
-      lineColor: isDark ? '#818cf8' : '#5B5BD6',
-      secondaryColor: isDark ? '#1f232b' : '#f0f2f5',
-      tertiaryColor: isDark ? '#15181e' : '#ffffff',
-      background: isDark ? '#15181e' : '#ffffff',
-      mainBkg: isDark ? '#1c2027' : '#ffffff',
-      nodeBorder: '#5B5BD6'
-    }
+    theme: theme === 'light' ? 'default' : 'dark',
+    themeVariables: vars
   });
   mermaidInitialized = true;
 }
