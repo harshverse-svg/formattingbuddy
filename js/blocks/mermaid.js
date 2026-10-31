@@ -93,3 +93,4 @@ Rules:
   const match = raw.match(/```(?:mermaid)?\s*([\s\S]*?)```/i);
   return match ? match[1].trim() : raw.trim();
 }
+

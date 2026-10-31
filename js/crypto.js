@@ -112,3 +112,4 @@ export async function decryptData(encryptedPayload, cryptoKey) {
   const dec = new TextDecoder();
   return dec.decode(decryptedBuffer);
 }
+

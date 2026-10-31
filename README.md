@@ -1,107 +1,222 @@
-# FormattingBuddy
+# 📄 FormattingBuddy
 
-> A minimal, modern, installable web application (PWA) that transforms long plain-text files into beautifully formatted documents with headings, tables, diagrams, charts, and maps, and exports to PDF, HTML, DOCX, Markdown, and ZIP.
+<p align="center">
+  <img src="assets/icons/icon.svg" width="96" height="96" alt="FormattingBuddy Logo" />
+</p>
 
-Pure static site: plain HTML/CSS/JS (ES modules), zero build steps, zero framework runtime, no backend, no database. Hosted directly on GitHub Pages.
+<p align="center">
+  <strong>Convert long plain-text files into beautifully structured documents with headings, tables, diagrams, charts, and maps.</strong><br>
+  <em>Pure static Progressive Web App (PWA): zero frameworks, zero build steps, zero backend, and zero server storage.</em>
+</p>
 
----
-
-## ✨ Features
-
-- **Linear / Notion Inspired Design**: Neutral grays, single `#5B5BD6` indigo accent, 12px radii, system typography, auto light/dark mode with manual toggle, and responsive desktop/mobile layouts.
-- **Local Passcode & Hardware-Grade Web Crypto**:
-  - First visit prompts you to create a device passcode.
-  - Generates a cryptographic PBKDF2 verification hash with random salt.
-  - Derives an in-memory 256-bit AES-GCM encryption key to secure all your stored API keys in `localStorage`.
-  - Auto-locks after 15 minutes of inactivity with instant memory purging.
-  - "Reset App" button to instantly wipe all local device keys, drafts, and caches.
-- **Multi-Provider AI Engine (Stage 2)**:
-  - Supports 8 providers:
-    1. **Google Gemini** (`aistudio.google.com/apikey`)
-    2. **Groq** (`console.groq.com/keys`)
-    3. **OpenRouter** (`openrouter.ai/keys`)
-    4. **Mistral AI** (`console.mistral.ai/api-keys`)
-    5. **Ollama Cloud / Local** (`ollama.com/settings/keys`)
-    6. **Hugging Face** (`huggingface.co/settings/tokens`)
-    7. **Anthropic Claude** (`platform.claude.com/settings/keys`)
-    8. **Custom OpenAI-Compatible** (custom base URL + model)
-  - Key testing utility: verifies credentials, flags invalid tokens, checks rate limits, and diagnoses CORS restrictions.
-  - **Auto Fallback**: Gracefully shifts to the next enabled provider if a 429 quota or 5xx server error occurs.
-- **Smart Chunking & Context Pipeline (Stage 3)**:
-  - Splits documents into 1,500–2,500 word sections strictly at paragraph boundaries.
-  - Sequential processing with progress bar, cancellation, and resume from failed chunks.
-  - Running summary and heading tracker prevents duplicate sections and maintains stylistic coherence.
-  - Local draft autosave prevents data loss.
-- **Rich Visual Enrichments (Stage 4)**:
-  - **Mermaid Diagrams**: Visualizes workflows, timelines, and hierarchies; syntax validated with `mermaid.parse()` and auto-repaired by AI on syntax errors.
-  - **Data Charts**: Rendered with Chart.js using the app's palette and theme.
-  - **Interactive & Static Maps**: Location names geocoded via OpenStreetMap Nominatim (rate-limited and cached) and mapped with Leaflet.
-- **Comprehensive Client-Side Export (Stage 5)**:
-  - **PDF**: A4 layout, prevents awkward page breaks across tables/diagrams (`break-inside: avoid`), includes Table of Contents and page numbers.
-  - **HTML**: Standalone, self-contained single file that opens completely offline with embedded CSS, SVGs, and chart images.
-  - **DOCX**: Real Microsoft Word document with proper heading hierarchy, formatted tables, and inline images.
-  - **Markdown & ZIP**: Clean raw `.md` file or bundled ZIP package containing markdown, HTML, and high-resolution chart assets.
-- **Installable PWA (Stage 1)**:
-  - Offline caching of the entire app shell and vendor libraries via Service Worker.
-  - Desktop and mobile "Install app" prompt.
+<p align="center">
+  <a href="https://harshverse-svg.github.io/formattingbuddy/"><img src="https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-5B5BD6?style=for-the-badge&logo=github" alt="Live Demo" /></a>
+  <a href="#-export-formats"><img src="https://img.shields.io/badge/Exports-PDF%20%7C%20HTML%20%7C%20DOCX%20%7C%20MD%20%7C%20ZIP-10B981?style=for-the-badge" alt="Exports" /></a>
+  <a href="#-security--zero-backend-architecture"><img src="https://img.shields.io/badge/Security-AES--GCM%20%2B%20PBKDF2-blue?style=for-the-badge" alt="Security" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-gray?style=for-the-badge" alt="License" /></a>
+</p>
 
 ---
 
-## 🔒 Security & Privacy Notice
+## 🌐 Live Application
 
-> **Your API keys are never committed or sent to any server.**
+👉 **Try it directly in your browser:** **[https://harshverse-svg.github.io/formattingbuddy/](https://harshverse-svg.github.io/formattingbuddy/)**
 
-- All API keys are entered directly by you in the site's **Settings** modal.
-- Keys are encrypted client-side using Web Crypto **AES-GCM (256-bit)** with a key derived from your device passcode via **PBKDF2 (100,000 iterations)**.
-- Decrypted keys exist solely in transient JavaScript memory while the workspace is unlocked.
-- All AI provider requests are made directly from your browser to the provider's API.
+*Works completely offline once installed as a PWA.*
 
 ---
 
-## 🚀 GitHub Pages Deployment
+## ⚡ What is FormattingBuddy?
 
-FormattingBuddy is pre-configured for GitHub Pages without any build steps or dependencies.
+When working with long raw texts, meeting transcripts, unorganized notes, research papers, or legacy documentation, turning them into executive-ready documents is time-consuming. 
 
-1. **Push to GitHub**:
+**FormattingBuddy** automates this entire pipeline client-side:
+1. **Intelligent Text Chunking**: Splits large documents (up to 2 MB) into 1,500–2,500 word segments strictly at paragraph boundaries.
+2. **Context-Aware AI Formatting**: Converts raw paragraphs into semantic Markdown with consistent H1/H2/H3 hierarchies, comparable data tables, and section summaries without inventing facts.
+3. **Automatic Visual Enrichments**:
+   - **Mermaid Diagrams**: Converts workflows, timelines, and hierarchies into interactive diagrams with automatic syntax validation and error auto-repair.
+   - **Data Charts**: Renders financial metrics and numbers into native Chart.js visualizations (bar, line, doughnut, pie).
+   - **Geographic Maps**: Geocodes locations via OpenStreetMap Nominatim and renders interactive maps with Leaflet.
+4. **Multi-Format Document Export**: Generates professional **A4 PDF** with page numbers and no split tables, real **Microsoft Word (.docx)** with embedded tables and images, self-contained **offline HTML**, **Markdown**, and **ZIP** bundles.
+
+---
+
+## 📐 Layout & Interface Design
+
+Designed with a minimal, modern Linear/Notion-inspired aesthetic:
+- **Palette**: Neutral surfaces with a single indigo accent (`#5B5BD6`).
+- **Modes**: Automatic light and dark theme with seamless manual toggle.
+- **Responsive Split Screen**: Two panels on desktop (`Source Text` on left, `Formatted Document` on right), and intuitive tab navigation on mobile.
+- **Performance**: 150ms transitions, zero heavy background animation loops, lightweight CPU footprint.
+
+```
++---------------------------------------------------------------------------------------------------+
+|  [Logo] FormattingBuddy        ● Ready      [Install PWA]  [Theme]  [Settings (Keys)]  [Lock] [Reset] |
++-------------------------------------------------+-------------------------------------------------+
+| LEFT: Source Text & Options                     | RIGHT: Formatted Document & Preview             |
+|                                                 |                                                 |
+| [Doc Type: Report] [Language] [Visuals: Rich]   | [View Markdown]  [Download Menu v]              |
+|                                                 |   - PDF Document (.pdf)                         |
+| +---------------------------------------------+ |   - Offline HTML (.html)                        |
+| | Drag & drop .txt or .md (up to 2 MB)        | |   - Word Document (.docx)                       |
+| | or paste unformatted text here...           | |   - Raw Markdown (.md)                          |
+| |                                             | |   - Document Bundle (.zip)                      |
+| |                                             | |                                                 |
+| |                                             | | Table of Contents                               |
+| +---------------------------------------------+ | 1. Introduction                                 |
+| 2,450 words | Max 2 MB | Split 1.5k-2.5k words | 2. Architecture Diagram (Mermaid)               |
+|                                                 | 3. Performance Metrics (Chart.js)               |
+| Provider: [Auto (fallback) v]  [  Convert  ]    | 4. Regional Centers (Leaflet Map)               |
++-------------------------------------------------+-------------------------------------------------+
+```
+
+---
+
+## 🔒 Security & Zero-Backend Architecture
+
+> **Your API keys and documents never touch a third-party server.**
+
+```
++---------------------------------------------------------------------------------------+
+|                                    YOUR BROWSER                                       |
+|                                                                                       |
+|  [Passcode] --(PBKDF2 100,000 iters)--> [Verification Hash] --> localStorage          |
+|                                     --> [AES-GCM 256-bit Key]                         |
+|                                                 |                                     |
+|  [Plaintext API Keys] --(AES-GCM Encrypt)--------+--> [Encrypted Keys] --> localStorage|
+|                                                 |                                     |
+|  [Decrypted Keys in RAM only] <-----------------+                                     |
+|           |                                                                           |
+|           +---- Direct HTTPS Request ----> [AI Provider: Gemini, Groq, Claude, etc.]  |
++---------------------------------------------------------------------------------------+
+```
+
+1. **Hardware-Grade Web Crypto**:
+   - Master passcode derived via **PBKDF2** (100,000 iterations, SHA-256) with a cryptographically secure 16-byte random salt.
+   - Verification hash stored in `localStorage`.
+   - In-memory **AES-GCM 256-bit** key encrypts sensitive provider credentials.
+2. **Ephemeral Memory Storage**:
+   - API keys are decrypted only in JavaScript runtime memory while the workspace is unlocked.
+   - Keys are wiped from memory immediately upon locking or after **15 minutes of inactivity**.
+   - Keys are never placed in URLs, never logged to console, and never sent anywhere except directly to the provider endpoint chosen by the user.
+3. **Strict Content-Security-Policy (CSP)**:
+   - Restricts script execution to local files (`'self'`).
+   - No external CDN dependencies at runtime.
+   - All vendor libraries are bundled locally in the repository.
+
+---
+
+## 🤖 Supported AI Providers
+
+FormattingBuddy integrates 8 AI providers with support for custom models, base URLs, and an intelligent **Auto (fallback)** engine:
+
+| Provider | Default Model | Get an API Key | Key Features |
+| :--- | :--- | :--- | :--- |
+| **Google Gemini** | `gemini-2.5-flash` | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | Generous free tier, fast multimodal engine |
+| **Groq** | `llama-3.3-70b-versatile` | [console.groq.com/keys](https://console.groq.com/keys) | Ultra-low latency LPU inference |
+| **OpenRouter** | `google/gemini-2.5-flash` | [openrouter.ai/keys](https://openrouter.ai/keys) | Access hundreds of open & commercial models |
+| **Mistral AI** | `mistral-small-latest` | [console.mistral.ai/api-keys](https://console.mistral.ai/api-keys) | High reasoning quality and multilingual support |
+| **Ollama Cloud / Local** | `llama3.2` | [ollama.com/settings/keys](https://ollama.com/settings/keys) | Cloud or local self-hosted endpoint (`localhost:11434`) |
+| **Hugging Face** | `Qwen/Qwen2.5-72B-Instruct` | [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens) | Serverless inference router for open weights |
+| **Anthropic Claude** | `claude-3-5-haiku-20241022` | [platform.claude.com/settings/keys](https://platform.claude.com/settings/keys) | Direct browser-access enabled API calls |
+| **Custom OpenAI-Compatible**| Custom | Provider-specific | Compatible with vLLM, LM Studio, Together, Perplexity |
+
+### 🔄 Auto (Fallback) Mode
+When **Auto (fallback)** is selected, FormattingBuddy monitors API responses. If a provider hits an HTTP `429` (rate limit/quota) or `5xx` (server outage), it automatically switches to the next configured provider, preserving the chunk progress and notifying the user.
+
+---
+
+## 📊 Visual Enrichments
+
+### 1. Mermaid Flowcharts & Diagrams
+- Transforms workflows, sequence interactions, hierarchies, and pipelines into Mermaid diagrams.
+- Syntax validated with `mermaid.parse()`.
+- If an LLM outputs malformed syntax, the app sends the exact error back to the model for automated repair (up to 2 retries).
+- Live preview includes a **"Fix this block"** fallback button.
+
+### 2. Native Data Charts (Chart.js)
+- Converts numeric tables and metrics into Bar, Line, Doughnut, and Pie charts.
+- Automatically inherits the app's theme palette with crisp dark/light styling and tooltips.
+
+### 3. OpenStreetMap Geocoded Maps (Leaflet)
+- Geocodes location names automatically via Nominatim OpenStreetMap API.
+- Implements a strict 1-request-per-second interval queue and persistent `localStorage` cache.
+- Renders interactive marker maps with Leaflet and displays warning badges for unmapped locations.
+
+---
+
+## 📦 Export Formats
+
+Export your formatted document in one click from the **Download** menu:
+
+- **📄 PDF (A4 Document)**:
+  - Formatted for printing on A4 paper.
+  - Page breaks strictly avoid splitting tables, callouts, or diagrams (`break-inside: avoid`).
+  - Includes a Table of Contents, running header, and `"Page X of Y"` footers.
+  - Converts SVG diagrams, canvas charts, and map tiles into crisp print images.
+- **📝 Microsoft Word (.docx)**:
+  - Real native `.docx` document (not an HTML rename).
+  - True Word heading styles (`Heading 1`, `Heading 2`, `Heading 3`).
+  - Formatted Word tables with styled headers.
+  - Diagrams and charts captured and embedded as inline Word images.
+- **🌐 Offline HTML**:
+  - Standalone, self-contained single `.html` file.
+  - Inlines all CSS, SVGs, and base64 chart images. Opens completely offline without any internet connection.
+- **📑 Raw Markdown**:
+  - Clean `.md` file ready for Obsidian, Notion, GitHub, or static site generators.
+- **📦 Document Bundle (ZIP)**:
+  - Includes `document.md`, `document.html`, and a dedicated `images/` directory containing all chart and diagram assets.
+
+---
+
+## 🧪 Built-In Demo Samples
+
+Want to test without pasting your own text? Use the **Load Sample** menu:
+
+1. **⚙️ Process Sample**: Continuous integration and container canary rollout workflow (triggers a 12-node Mermaid diagram and verification tables).
+2. **📊 Data Heavy Sample**: Enterprise cloud computing quarterly growth report (triggers Chart.js bar and doughnut charts).
+3. **🗺️ Locations Sample**: European technology innovation centers (triggers Nominatim geocoding and Leaflet map markers across 6 metropolitan capitals).
+
+---
+
+## 📱 PWA Installation
+
+FormattingBuddy is a certified Progressive Web App that works completely offline once cached.
+
+- **Desktop (Chrome / Edge / Brave)**:
+  Click the **"Install"** button in the top navigation bar, or click the install icon in the URL bar.
+- **iOS / iPadOS (Safari)**:
+  Tap the **Share** button &rarr; tap **"Add to Home Screen"**.
+- **Android (Chrome)**:
+  Tap the menu (⋮) &rarr; tap **"Install app"** or **"Add to Home screen"**.
+
+---
+
+## 🛠️ Local Development
+
+FormattingBuddy requires no compilation, bundler, or build tool.
+
+1. **Clone the repository**:
    ```bash
-   git init
-   git add .
-   git commit -m "Initial commit of FormattingBuddy"
-   git remote add origin https://github.com/<your-username>/formattingbuddy.git
-   git branch -M main
-   git push -u origin main
+   git clone https://github.com/harshverse-svg/formattingbuddy.git
+   cd formattingbuddy
    ```
 
-2. **Enable GitHub Pages**:
-   - Go to your repository settings on GitHub: **Settings &rarr; Pages**.
-   - Under **Build and deployment &rarr; Source**, select **GitHub Actions**.
-   - The included `.github/workflows/deploy.yml` workflow will automatically deploy your site on every push to `main`.
+2. **Start a local web server**:
+   - Using Python:
+     ```bash
+     python -m http.server 8080
+     ```
+   - Using Node:
+     ```bash
+     npx serve .
+     ```
 
----
-
-## 📱 How to Install the PWA
-
-- **Chrome / Edge / Brave (Desktop)**:
-  - Click the **"Install"** button in the top navigation bar, or click the install icon in your browser address bar.
-- **Safari (iOS / iPadOS)**:
-  - Tap the **Share** button &rarr; tap **"Add to Home Screen"**.
-- **Chrome (Android)**:
-  - Tap the three-dots menu &rarr; tap **"Install app"** or **"Add to Home screen"**.
-
----
-
-## 🧪 Testing with Demo Samples
-
-The app includes 3 pre-built samples to immediately test the formatting and export pipeline without typing:
-
-1. **Process Sample**: Continuous integration pipeline with a 12-node Mermaid workflow and verification tables.
-2. **Data Heavy Sample**: Cloud infrastructure financial statistics with bar and doughnut charts.
-3. **Places Sample**: European tech innovation capitals with interactive geocoded Leaflet map.
-
-Click **Load Sample** in the top-left toolbar, choose any sample, and click **Download** to test PDF, DOCX, or HTML export!
+3. **Open the app**:
+   Navigate to `http://localhost:8080`.
 
 ---
 
 ## 📄 License
 
-MIT License. See [LICENSE](LICENSE) for details.
+Distributed under the **MIT License**. See [LICENSE](LICENSE) for details.

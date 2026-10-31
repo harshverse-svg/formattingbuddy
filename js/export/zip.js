@@ -68,3 +68,4 @@ export async function exportToZip(markdownContent, articleEl, title = 'Formatted
   const zipBlob = await zip.generateAsync({ type: 'blob' });
   downloadBlob(zipBlob, `${slug}.zip`);
 }
+

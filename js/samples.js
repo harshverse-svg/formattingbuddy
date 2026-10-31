@@ -173,3 +173,4 @@ The primary metropolitan hubs shaping European technology, research, and venture
 | **Amsterdam** | Cloud Infrastructure, Green-tech | Low-latency European internet exchanges |`
   }
 };
+

@@ -57,3 +57,4 @@ def create_icon(size, output_path):
 if __name__ == "__main__":
     create_icon(192, "assets/icons/icon-192.png")
     create_icon(512, "assets/icons/icon-512.png")
+

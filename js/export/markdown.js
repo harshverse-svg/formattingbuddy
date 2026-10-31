@@ -8,3 +8,4 @@ export function exportToMarkdown(markdownContent, title = 'Formatted Document') 
   const blob = new Blob([markdownContent], { type: 'text/markdown;charset=utf-8' });
   downloadBlob(blob, `${slug}.md`);
 }
+

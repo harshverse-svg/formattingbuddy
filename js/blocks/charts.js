@@ -122,3 +122,4 @@ export function renderChart(canvasEl, spec, isDark = false) {
 
   return chart;
 }
+

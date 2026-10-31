@@ -124,3 +124,4 @@ export function downloadBlob(blob, filename) {
     URL.revokeObjectURL(url);
   }, 500);
 }
+

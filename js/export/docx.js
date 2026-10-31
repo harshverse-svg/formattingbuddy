@@ -281,3 +281,4 @@ export async function exportToDocx(articleEl, title = 'Formatted Document') {
   const slug = title.toLowerCase().replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-') || 'formatted-document';
   downloadBlob(blob, `${slug}.docx`);
 }
+
