@@ -46,6 +46,8 @@ const STATIC_ASSETS = [
   './vendor/tesseract-core.wasm.js',
   './vendor/tesseract-core-simd.wasm',
   './vendor/tesseract-core.wasm',
+  './vendor/fonts/NotoSans-Regular.ttf',
+  './vendor/fonts/NotoSansDevanagari-Regular.ttf',
   './assets/icons/icon.svg',
   './assets/icons/wordmark.svg',
   './assets/icons/icon-192.png',

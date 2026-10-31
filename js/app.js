@@ -9,7 +9,7 @@ import { ConversionPipeline, countWords, chunkText } from './chunker.js';
 import { renderDocumentToElement, extractToc } from './markdown.js';
 import { exportToSelfContainedHtml } from './export/html.js';
 import { exportToMarkdown } from './export/markdown.js';
-import { exportToPdf } from './export/pdf.js';
+import { exportToPdf, exportViaPrintIframe, copyExportDiagnostic } from './export/pdf.js';
 import { exportToDocx } from './export/docx.js';
 import { exportToZip } from './export/zip.js';
 import { SAMPLES } from './samples.js';
@@ -301,6 +301,7 @@ function initHelpUI() {
   const openBtn = document.getElementById('btn-open-help');
   const closeBtn = document.getElementById('btn-close-help');
   const doneBtn = document.getElementById('btn-help-done');
+  const reportBtn = document.getElementById('btn-report-export-problem');
 
   if (openBtn && modal) {
     openBtn.addEventListener('click', () => modal.classList.add('active'));
@@ -308,6 +309,17 @@ function initHelpUI() {
   const close = () => modal && modal.classList.remove('active');
   if (closeBtn) closeBtn.addEventListener('click', close);
   if (doneBtn) doneBtn.addEventListener('click', close);
+
+  if (reportBtn) {
+    reportBtn.addEventListener('click', async () => {
+      const ok = await copyExportDiagnostic();
+      if (ok) {
+        showToast('Export diagnostic log copied to clipboard.', 'success');
+      } else {
+        showToast('Unable to copy diagnostic log to clipboard.', 'warning');
+      }
+    });
+  }
 }
 
 /* ==========================================================================
@@ -1126,6 +1138,17 @@ function initExportUI() {
       showToast(`PDF export failed: ${err.message}`, 'error');
     }
   });
+
+  const exportPrintBtn = document.getElementById('export-print');
+  if (exportPrintBtn) {
+    exportPrintBtn.addEventListener('click', () => {
+      menu.classList.remove('show');
+      const article = document.querySelector('.doc-article');
+      if (!article) return showToast('No document content to export.', 'warning');
+      exportViaPrintIframe(article, getDocumentTitle());
+      showToast('Opening print preview...', 'info');
+    });
+  }
 
   document.getElementById('export-html').addEventListener('click', async () => {
     menu.classList.remove('show');

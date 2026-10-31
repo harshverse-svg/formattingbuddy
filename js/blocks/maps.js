@@ -117,10 +117,11 @@ export async function renderMap(containerEl, spec, isDark = false) {
     scrollWheelZoom: false
   });
 
-  // OpenStreetMap tile layer
+  // OpenStreetMap tile layer (with crossOrigin: true for canvas export safety)
   const tileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
   const tiles = window.L.tileLayer(tileUrl, {
     maxZoom: 18,
+    crossOrigin: true,
     attribution: '&copy; OpenStreetMap contributors'
   });
   tiles.addTo(map);
