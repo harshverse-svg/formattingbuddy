@@ -17,6 +17,7 @@ const STATIC_ASSETS = [
   './js/chunker.js',
   './js/markdown.js',
   './js/samples.js',
+  './js/history.js',
   './js/blocks/mermaid.js',
   './js/blocks/charts.js',
   './js/blocks/maps.js',

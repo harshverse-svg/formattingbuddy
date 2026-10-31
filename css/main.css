@@ -1437,3 +1437,66 @@ button, input, select, textarea {
   font-weight: 500;
   z-index: 10000;
 }
+
+/* ==========================================================================
+   Stage E: Print-Friendly Preview Mode & History
+   ========================================================================== */
+body.print-preview-mode .panel-preview {
+  background-color: #333c4d !important;
+}
+
+body.print-preview-mode .preview-body {
+  background-color: #333c4d !important;
+  padding: 32px 16px !important;
+}
+
+body.print-preview-mode #preview-container {
+  max-width: 794px !important;
+  margin: 0 auto !important;
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  padding: 48px !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4) !important;
+  border-radius: 4px !important;
+  min-height: 1123px !important;
+}
+
+body.print-preview-mode #preview-container * {
+  color: #111827 !important;
+}
+
+.history-item-card {
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  transition: border-color 150ms ease;
+}
+
+.history-item-card:hover {
+  border-color: var(--accent);
+}
+
+.history-item-info strong {
+  display: block;
+  font-size: 0.88rem;
+  color: var(--text);
+  margin-bottom: 3px;
+}
+
+.history-item-meta {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.history-item-actions {
+  display: flex;
+  gap: 6px;
+}

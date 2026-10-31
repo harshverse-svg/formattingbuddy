@@ -15,6 +15,7 @@ import { exportToZip } from './export/zip.js';
 import { SAMPLES } from './samples.js';
 import { saveParsedFile, getStorageStats, clearAllStoredFiles } from './db.js';
 import { OcrRunner } from './ocr.js';
+import { getHistory, saveToHistory, deleteHistoryItem, clearHistory } from './history.js';
 import * as pdfjsLib from '../vendor/pdf.min.mjs';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = './vendor/pdf.worker.min.mjs';
@@ -42,6 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initOcrUI();
   initExportUI();
   initSamplesUI();
+  initHistoryUI();
   restoreState();
 });
 
@@ -919,6 +921,14 @@ async function runConversionPipeline(scope = 'all') {
 
     const finalMarkdown = await activePipeline.run(0);
     state.set({ markdownOutput: finalMarkdown });
+    saveToHistory({
+      title: getDocumentTitle(),
+      wordCount: countWords(finalMarkdown),
+      docType: docTypeSelect.value,
+      language: langSelect.value,
+      markdown: finalMarkdown,
+      rawText: textToProcess
+    });
     await renderPreview(finalMarkdown);
     await updateStatusBarStorage();
     showToast('Document conversion completed!', 'success');
@@ -1243,26 +1253,197 @@ function initExportUI() {
     }
   });
 
-  // Toggle Raw / Preview View
+
+  // Toggle Raw / Editable Markdown View (Stage E)
   const toggleViewBtn = document.getElementById('btn-toggle-view');
   const previewContainer = document.getElementById('preview-container');
   const rawViewer = document.getElementById('raw-markdown-viewer');
 
-  if (toggleViewBtn) {
+  let editDebounceTimer = null;
+  if (rawViewer) {
+    rawViewer.addEventListener('input', () => {
+      clearTimeout(editDebounceTimer);
+      editDebounceTimer = setTimeout(async () => {
+        const updated = rawViewer.value;
+        state.set({ markdownOutput: updated });
+        await renderPreview(updated);
+        updateAutosaveIndicator('Markdown edits saved locally');
+      }, 250);
+    });
+  }
+
+  if (toggleViewBtn && previewContainer && rawViewer) {
     toggleViewBtn.addEventListener('click', () => {
       const isRaw = rawViewer.style.display === 'block';
       if (isRaw) {
         rawViewer.style.display = 'none';
         previewContainer.style.display = 'block';
-        toggleViewBtn.textContent = 'View Markdown';
+        toggleViewBtn.textContent = 'Edit Markdown';
       } else {
+        rawViewer.value = state.get().markdownOutput || '';
         rawViewer.style.display = 'block';
         previewContainer.style.display = 'none';
         toggleViewBtn.textContent = 'View Formatted';
       }
     });
   }
+
+  // Copy Dropdown (Stage E)
+  const copyBtn = document.getElementById('btn-copy');
+  const copyMenu = document.getElementById('copy-menu');
+  if (copyBtn && copyMenu) {
+    copyBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      copyMenu.classList.toggle('show');
+    });
+
+    window.addEventListener('click', () => {
+      copyMenu.classList.remove('show');
+    });
+
+    document.getElementById('btn-copy-formatted')?.addEventListener('click', async () => {
+      copyMenu.classList.remove('show');
+      const article = document.querySelector('.doc-article');
+      if (!article) return showToast('No document content to copy.', 'warning');
+      try {
+        const htmlBlob = new Blob([article.innerHTML], { type: 'text/html' });
+        const textBlob = new Blob([article.innerText], { type: 'text/plain' });
+        if (navigator.clipboard && navigator.clipboard.write) {
+          await navigator.clipboard.write([
+            new ClipboardItem({ 'text/html': htmlBlob, 'text/plain': textBlob })
+          ]);
+        } else {
+          await navigator.clipboard.writeText(article.innerText);
+        }
+        showToast('Formatted text copied to clipboard.', 'success');
+      } catch (e) {
+        showToast(`Copy failed: ${e.message}`, 'error');
+      }
+    });
+
+    document.getElementById('btn-copy-markdown')?.addEventListener('click', async () => {
+      copyMenu.classList.remove('show');
+      const md = state.get().markdownOutput;
+      if (!md) return showToast('No document content to copy.', 'warning');
+      try {
+        await navigator.clipboard.writeText(md);
+        showToast('Markdown copied to clipboard.', 'success');
+      } catch (e) {
+        showToast(`Copy failed: ${e.message}`, 'error');
+      }
+    });
+  }
+
+  // Print-Friendly Preview Toggle (Stage E)
+  const printPreviewBtn = document.getElementById('btn-toggle-print-preview');
+  if (printPreviewBtn) {
+    printPreviewBtn.addEventListener('click', () => {
+      const isPrint = document.body.classList.toggle('print-preview-mode');
+      printPreviewBtn.textContent = isPrint ? '🖥️ Web View' : '📄 Print View';
+      showToast(isPrint ? 'Print sheet preview enabled.' : 'Standard preview enabled.', 'info');
+    });
+  }
 }
+
+/* ==========================================================================
+   14. Conversion History UI (Stage E)
+   ========================================================================== */
+function initHistoryUI() {
+  const modal = document.getElementById('modal-history');
+  const openBtn = document.getElementById('btn-open-history');
+  const closeBtn = document.getElementById('btn-close-history');
+  const doneBtn = document.getElementById('btn-done-history');
+  const clearBtn = document.getElementById('btn-clear-history');
+  const container = document.getElementById('history-list-container');
+  const textarea = document.getElementById('text-input');
+
+  if (!modal) return;
+
+  const close = () => modal.classList.remove('active');
+  if (closeBtn) closeBtn.addEventListener('click', close);
+  if (doneBtn) doneBtn.addEventListener('click', close);
+
+  if (openBtn) {
+    openBtn.addEventListener('click', () => {
+      renderHistoryList();
+      modal.classList.add('active');
+    });
+  }
+
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      if (window.confirm('Are you sure you want to delete all conversion history?')) {
+        clearHistory();
+        renderHistoryList();
+        showToast('Conversion history cleared.', 'info');
+      }
+    });
+  }
+
+  function renderHistoryList() {
+    if (!container) return;
+    container.innerHTML = '';
+    const list = getHistory();
+
+    if (list.length === 0) {
+      container.innerHTML = `
+        <div style="text-align:center; padding:32px 16px; color:var(--text-muted); font-size:0.88rem;">
+          <div style="font-size:2rem; margin-bottom:8px;">🕒</div>
+          No conversion history recorded yet.<br>Convert a document or load a sample to see it saved here.
+        </div>
+      `;
+      return;
+    }
+
+    list.forEach((item) => {
+      const card = document.createElement('div');
+      card.className = 'history-item-card';
+
+      const dateStr = new Date(item.timestamp).toLocaleString(undefined, {
+        month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+      });
+
+      card.innerHTML = `
+        <div class="history-item-info">
+          <strong>${escapeHtml(item.title)}</strong>
+          <div class="history-item-meta">
+            <span>📅 ${dateStr}</span>
+            <span>📝 ${item.wordCount.toLocaleString()} words</span>
+            <span class="badge-tag">${escapeHtml(item.docType || 'Document')}</span>
+            <span class="badge-tag">${escapeHtml(item.language || 'English')}</span>
+          </div>
+        </div>
+        <div class="history-item-actions">
+          <button class="btn btn-sm btn-outline btn-restore-hist" type="button">Restore</button>
+          <button class="btn btn-sm btn-outline btn-delete-hist" style="color:var(--danger); border-color:var(--danger-border);" type="button">Delete</button>
+        </div>
+      `;
+
+      card.querySelector('.btn-restore-hist').addEventListener('click', async () => {
+        if (textarea && item.rawText) {
+          textarea.value = item.rawText;
+        }
+        state.set({
+          inputText: item.rawText || '',
+          markdownOutput: item.markdown || '',
+          docType: item.docType || 'General',
+          language: item.language || 'English'
+        });
+        await renderPreview(item.markdown || '');
+        close();
+        showToast(`Restored "${item.title}" from history.`, 'success');
+      });
+
+      card.querySelector('.btn-delete-hist').addEventListener('click', () => {
+        deleteHistoryItem(item.id);
+        renderHistoryList();
+      });
+
+      container.appendChild(card);
+    });
+  }
+}
+
 
 function getDocumentTitle() {
   const h1 = document.querySelector('.doc-article h1');
@@ -1301,6 +1482,14 @@ function initSamplesUI() {
           markdownOutput: sample.preformattedMarkdown
         });
         await renderPreview(sample.preformattedMarkdown);
+        saveToHistory({
+          title: sample.name,
+          wordCount: countWords(sample.preformattedMarkdown),
+          docType: 'Report',
+          language: 'English',
+          markdown: sample.preformattedMarkdown,
+          rawText: sample.rawText
+        });
         showToast(`Loaded sample: ${sample.name}`, 'success');
       }
     });
