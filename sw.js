@@ -17,6 +17,7 @@ const STATIC_ASSETS = [
   './js/chunker.js',
   './js/markdown.js',
   './js/samples.js',
+  './js/wallpaper.js',
   './js/blocks/mermaid.js',
   './js/blocks/charts.js',
   './js/blocks/maps.js',
@@ -51,7 +52,23 @@ const STATIC_ASSETS = [
   './assets/icons/icon.svg',
   './assets/icons/wordmark.svg',
   './assets/icons/icon-192.png',
-  './assets/icons/icon-512.png'
+  './assets/icons/icon-512.png',
+  './assets/wallpapers/mist-mountains.webp',
+  './assets/wallpapers/mist-mountains-thumb.webp',
+  './assets/wallpapers/deep-forest.webp',
+  './assets/wallpapers/deep-forest-thumb.webp',
+  './assets/wallpapers/calm-ocean.webp',
+  './assets/wallpapers/calm-ocean-thumb.webp',
+  './assets/wallpapers/desert-dune.webp',
+  './assets/wallpapers/desert-dune-thumb.webp',
+  './assets/wallpapers/nocturne-aurora.webp',
+  './assets/wallpapers/nocturne-aurora-thumb.webp',
+  './assets/wallpapers/architectural-minimal.webp',
+  './assets/wallpapers/architectural-minimal-thumb.webp',
+  './assets/wallpapers/golden-coast.webp',
+  './assets/wallpapers/golden-coast-thumb.webp',
+  './assets/wallpapers/paper-texture.webp',
+  './assets/wallpapers/paper-texture-thumb.webp'
 ];
 
 self.addEventListener('install', (event) => {

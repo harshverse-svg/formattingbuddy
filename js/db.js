@@ -4,7 +4,7 @@
  */
 
 const DB_NAME = 'formattingbuddy_db_v1';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let dbPromise = null;
 
@@ -32,6 +32,11 @@ function openDatabase() {
       // 3. OCR Cache (Key: docId_pageNum)
       if (!db.objectStoreNames.contains('ocr_cache')) {
         db.createObjectStore('ocr_cache', { keyPath: 'key' });
+      }
+
+      // 4. User Wallpaper Store (Stage D)
+      if (!db.objectStoreNames.contains('user_wallpapers')) {
+        db.createObjectStore('user_wallpapers', { keyPath: 'id' });
       }
     };
 
@@ -222,5 +227,54 @@ export async function setCachedOcrPage(docId, pageNum, text, mode = 'local') {
     });
   } catch (e) {
     console.warn('Failed saving OCR page to cache:', e);
+  }
+}
+
+/* ==========================================================================
+   User Custom Wallpaper Operations (Stage D)
+   ========================================================================== */
+export async function saveUserWallpaper(dataUrl) {
+  try {
+    const db = await openDatabase();
+    const tx = db.transaction('user_wallpapers', 'readwrite');
+    const store = tx.objectStore('user_wallpapers');
+    return new Promise((resolve, reject) => {
+      const req = store.put({ id: 'custom_wallpaper', dataUrl, updatedAt: Date.now() });
+      req.onsuccess = () => resolve();
+      req.onerror = (e) => reject(e.target.error);
+    });
+  } catch (err) {
+    console.warn('Failed saving custom wallpaper:', err);
+    throw err;
+  }
+}
+
+export async function getUserWallpaper() {
+  try {
+    const db = await openDatabase();
+    const tx = db.transaction('user_wallpapers', 'readonly');
+    const store = tx.objectStore('user_wallpapers');
+    return new Promise((resolve) => {
+      const req = store.get('custom_wallpaper');
+      req.onsuccess = () => resolve(req.result ? req.result.dataUrl : null);
+      req.onerror = () => resolve(null);
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function deleteUserWallpaper() {
+  try {
+    const db = await openDatabase();
+    const tx = db.transaction('user_wallpapers', 'readwrite');
+    const store = tx.objectStore('user_wallpapers');
+    return new Promise((resolve) => {
+      const req = store.delete('custom_wallpaper');
+      req.onsuccess = () => resolve();
+      req.onerror = () => resolve();
+    });
+  } catch (e) {
+    console.warn('Failed deleting custom wallpaper:', e);
   }
 }

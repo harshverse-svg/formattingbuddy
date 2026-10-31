@@ -15,6 +15,7 @@ import { exportToZip } from './export/zip.js';
 import { SAMPLES } from './samples.js';
 import { saveParsedFile, getStorageStats, clearAllStoredFiles } from './db.js';
 import { OcrRunner } from './ocr.js';
+import { wallpaperManager, BUNDLED_WALLPAPERS, ACCENT_PRESETS } from './wallpaper.js';
 import * as pdfjsLib from '../vendor/pdf.min.mjs';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = './vendor/pdf.worker.min.mjs';
@@ -28,6 +29,7 @@ let pendingPdfDoc = null;
 
 // Initialize app when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
+  wallpaperManager.init();
   initSplash();
   initPwa();
   initTheme();
@@ -420,6 +422,7 @@ function initSettingsUI() {
       showToast('Please unlock the app to access Settings.', 'warning');
       return;
     }
+    renderAppearancePanel();
     renderProviderCards();
     modal.classList.add('active');
   });
@@ -432,6 +435,191 @@ function initSettingsUI() {
 
   closeBtn.addEventListener('click', closeModal);
   if (doneBtn) doneBtn.addEventListener('click', closeModal);
+
+  // Appearance Tabs (Stage D)
+  const tabAppearance = document.getElementById('tab-settings-appearance');
+  const tabKeys = document.getElementById('tab-settings-keys');
+  const panelAppearance = document.getElementById('panel-settings-appearance');
+  const panelKeys = document.getElementById('panel-settings-keys');
+
+  if (tabAppearance && tabKeys) {
+    tabAppearance.addEventListener('click', () => {
+      tabAppearance.classList.add('active');
+      tabKeys.classList.remove('active');
+      if (panelAppearance) panelAppearance.style.display = 'block';
+      if (panelKeys) panelKeys.style.display = 'none';
+      renderAppearancePanel();
+    });
+
+    tabKeys.addEventListener('click', () => {
+      tabKeys.classList.add('active');
+      tabAppearance.classList.remove('active');
+      if (panelKeys) panelKeys.style.display = 'block';
+      if (panelAppearance) panelAppearance.style.display = 'none';
+      renderProviderCards();
+    });
+  }
+
+  function renderAppearancePanel() {
+    const grid = document.getElementById('wallpaper-grid-container');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    const currentWp = wallpaperManager.config.wallpaper;
+
+    // 1. None / Clean Solid card
+    const noneCard = document.createElement('div');
+    noneCard.className = `wallpaper-card ${currentWp === 'none' ? 'active' : ''}`;
+    noneCard.style.backgroundColor = 'var(--surface-raised)';
+    noneCard.style.display = 'flex';
+    noneCard.style.alignItems = 'center';
+    noneCard.style.justifyContent = 'center';
+    noneCard.innerHTML = `
+      <span style="font-size:0.8rem; font-weight:600; color:var(--text);">None</span>
+      <div class="wallpaper-card-name">Solid Ground</div>
+    `;
+    noneCard.addEventListener('click', () => {
+      wallpaperManager.setWallpaper('none');
+      renderAppearancePanel();
+    });
+    grid.appendChild(noneCard);
+
+    // 2. Bundled Wallpapers
+    BUNDLED_WALLPAPERS.forEach((wp) => {
+      const card = document.createElement('div');
+      card.className = `wallpaper-card ${currentWp === wp.id ? 'active' : ''}`;
+      card.style.backgroundImage = `url("${wp.thumb}")`;
+      card.innerHTML = `<div class="wallpaper-card-name">${escapeHtml(wp.name)}</div>`;
+      card.addEventListener('click', () => {
+        wallpaperManager.setWallpaper(wp.id);
+        renderAppearancePanel();
+      });
+      grid.appendChild(card);
+    });
+
+    // 3. Custom Wallpaper (if available)
+    const removeBtn = document.getElementById('btn-remove-wallpaper');
+    if (wallpaperManager.customWallpaperUrl) {
+      const customCard = document.createElement('div');
+      customCard.className = `wallpaper-card ${currentWp === 'custom' ? 'active' : ''}`;
+      customCard.style.backgroundImage = `url("${wallpaperManager.customWallpaperUrl}")`;
+      customCard.innerHTML = `<div class="wallpaper-card-name">Custom Photo</div>`;
+      customCard.addEventListener('click', () => {
+        wallpaperManager.setWallpaper('custom');
+        renderAppearancePanel();
+      });
+      grid.appendChild(customCard);
+      if (removeBtn) removeBtn.style.display = 'inline-flex';
+    } else if (removeBtn) {
+      removeBtn.style.display = 'none';
+    }
+
+    // Sliders & Readouts
+    const dimRange = document.getElementById('range-bg-dim');
+    const dimReadout = document.getElementById('readout-bg-dim');
+    if (dimRange && dimReadout) {
+      dimRange.value = wallpaperManager.config.backgroundDim;
+      dimReadout.textContent = `${wallpaperManager.config.backgroundDim}%`;
+      dimRange.oninput = () => {
+        dimReadout.textContent = `${dimRange.value}%`;
+        wallpaperManager.setBackgroundDim(dimRange.value);
+      };
+    }
+
+    const opacityRange = document.getElementById('range-panel-opacity');
+    const opacityReadout = document.getElementById('readout-panel-opacity');
+    if (opacityRange && opacityReadout) {
+      opacityRange.value = wallpaperManager.config.panelOpacity;
+      opacityReadout.textContent = `${wallpaperManager.config.panelOpacity}%`;
+      opacityRange.oninput = () => {
+        opacityReadout.textContent = `${opacityRange.value}%`;
+        wallpaperManager.setPanelOpacity(opacityRange.value);
+      };
+    }
+
+    // Accent Presets
+    const accentContainer = document.getElementById('accent-presets-container');
+    if (accentContainer) {
+      accentContainer.innerHTML = '';
+      const currentAccent = wallpaperManager.config.accentColor || '#4F5BD5';
+
+      ACCENT_PRESETS.forEach((preset) => {
+        const dot = document.createElement('button');
+        dot.type = 'button';
+        dot.className = `accent-dot ${currentAccent.toLowerCase() === preset.value.toLowerCase() ? 'active' : ''}`;
+        dot.style.backgroundColor = preset.value;
+        dot.title = preset.name;
+        dot.addEventListener('click', () => {
+          wallpaperManager.setAccentColor(preset.value);
+          renderAppearancePanel();
+        });
+        accentContainer.appendChild(dot);
+      });
+
+      // Custom color picker input
+      const customColorWrap = document.createElement('label');
+      customColorWrap.style.display = 'flex';
+      customColorWrap.style.alignItems = 'center';
+      customColorWrap.style.gap = '6px';
+      customColorWrap.style.cursor = 'pointer';
+      customColorWrap.style.fontSize = '0.78rem';
+      customColorWrap.style.color = 'var(--text-muted)';
+      customColorWrap.innerHTML = `
+        <input type="color" id="input-custom-accent" value="${currentAccent}" style="width:26px; height:26px; border:none; border-radius:9999px; cursor:pointer; background:transparent;">
+        <span>Custom</span>
+      `;
+      const colorInput = customColorWrap.querySelector('input');
+      colorInput.addEventListener('input', () => {
+        wallpaperManager.setAccentColor(colorInput.value);
+      });
+      accentContainer.appendChild(customColorWrap);
+    }
+
+    // Checkboxes
+    const cbBlur = document.getElementById('cb-glass-blur');
+    if (cbBlur) {
+      cbBlur.checked = wallpaperManager.config.glassBlur;
+      cbBlur.onchange = () => wallpaperManager.setGlassBlur(cbBlur.checked);
+    }
+
+    const cbLowPower = document.getElementById('cb-low-power');
+    if (cbLowPower) {
+      cbLowPower.checked = wallpaperManager.config.lowPowerMode;
+      cbLowPower.onchange = () => wallpaperManager.setLowPowerMode(cbLowPower.checked);
+    }
+
+    // Upload & Remove Handlers
+    const uploadBtn = document.getElementById('btn-upload-wallpaper');
+    const fileInput = document.getElementById('input-custom-wallpaper');
+    if (uploadBtn && fileInput) {
+      uploadBtn.onclick = () => fileInput.click();
+      fileInput.onchange = async () => {
+        const file = fileInput.files[0];
+        if (!file) return;
+        try {
+          uploadBtn.disabled = true;
+          uploadBtn.textContent = 'Processing...';
+          await wallpaperManager.uploadCustomWallpaper(file);
+          showToast('Custom wallpaper uploaded and applied!', 'success');
+          renderAppearancePanel();
+        } catch (err) {
+          showToast(`Wallpaper error: ${err.message}`, 'error');
+        } finally {
+          uploadBtn.disabled = false;
+          uploadBtn.textContent = 'Upload Custom...';
+          fileInput.value = '';
+        }
+      };
+    }
+
+    if (removeBtn) {
+      removeBtn.onclick = async () => {
+        await wallpaperManager.removeCustomWallpaper();
+        showToast('Custom wallpaper removed.', 'info');
+        renderAppearancePanel();
+      };
+    }
+  }
 
   function renderProviderCards() {
     container.innerHTML = '';
