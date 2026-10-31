@@ -46,6 +46,10 @@ document.addEventListener('DOMContentLoaded', () => {
   initExportUI();
   initSamplesUI();
   initHistoryUI();
+  initSplitResizer();
+  initQuickToolbarUI();
+  initShortcutsUI();
+  initPreviewSearch();
   restoreState();
 });
 
@@ -1368,6 +1372,9 @@ async function renderPreview(markdown) {
       console.log('Fixed block:', blk.type);
     }
   });
+
+  attachBlockCopyButtons(container);
+  updateDocumentStats(markdown);
 }
 
 /* ==========================================================================
@@ -1755,4 +1762,418 @@ export function showToast(message, type = 'info') {
 function escapeHtml(str) {
   if (!str) return '';
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+
+/* ==========================================================================
+   16. Interactive Split-Pane Resizer (Modern Web Motion)
+   ========================================================================== */
+function initSplitResizer() {
+  const resizer = document.getElementById('split-resizer');
+  const panelInput = document.querySelector('.panel-input');
+  const panelPreview = document.querySelector('.panel-preview');
+  const container = document.querySelector('.main-container');
+
+  if (!resizer || !panelInput || !panelPreview || !container) return;
+
+  const savedPercent = localStorage.getItem('fb_panel_split');
+  if (savedPercent && window.innerWidth > 900) {
+    const p = parseFloat(savedPercent);
+    if (!isNaN(p) && p >= 20 && p <= 80) {
+      panelInput.style.flex = `0 0 ${p}%`;
+      panelPreview.style.flex = '1';
+    }
+  }
+
+  let isDragging = false;
+
+  resizer.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    resizer.classList.add('dragging');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const rect = container.getBoundingClientRect();
+    const percent = Math.min(Math.max(((e.clientX - rect.left) / rect.width) * 100, 20), 80);
+    panelInput.style.flex = `0 0 ${percent}%`;
+    panelPreview.style.flex = '1';
+    localStorage.setItem('fb_panel_split', percent.toFixed(1));
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (!isDragging) return;
+    isDragging = false;
+    resizer.classList.remove('dragging');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  });
+
+  resizer.addEventListener('dblclick', () => {
+    panelInput.style.flex = '1';
+    panelPreview.style.flex = '1';
+    localStorage.removeItem('fb_panel_split');
+    showToast('Panels reset to 50/50 balance', 'info');
+  });
+}
+
+/* ==========================================================================
+   17. Quick Markdown & Enrichments Toolbar
+   ========================================================================== */
+function initQuickToolbarUI() {
+  const textarea = document.getElementById('text-input');
+  const toolbar = document.querySelector('.markdown-quick-toolbar');
+  if (!textarea || !toolbar) return;
+
+  toolbar.addEventListener('click', (e) => {
+    const btn = e.target.closest('.tool-btn');
+    if (!btn) return;
+    const tool = btn.getAttribute('data-tool');
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const val = textarea.value;
+    const selected = val.substring(start, end);
+
+    let insert = '';
+    let cursorOffset = 0;
+
+    switch (tool) {
+      case 'bold':
+        insert = `**${selected || 'bold text'}**`;
+        cursorOffset = selected ? insert.length : 2;
+        break;
+      case 'italic':
+        insert = `*${selected || 'italic text'}*`;
+        cursorOffset = selected ? insert.length : 1;
+        break;
+      case 'h2':
+        insert = `\n\n## ${selected || 'Section Heading'}\n\n`;
+        cursorOffset = insert.length;
+        break;
+      case 'table':
+        insert = `\n\n| Column 1 | Column 2 | Column 3 |\n| --- | --- | --- |\n| Item 1 | Detail A | 100 |\n| Item 2 | Detail B | 250 |\n\n`;
+        cursorOffset = insert.length;
+        break;
+      case 'mermaid':
+        insert = `\n\n\`\`\`mermaid\nflowchart TD\n    A[Start] --> B{Condition}\n    B -- Yes --> C[Process]\n    B -- No --> D[Alternative]\n    C --> E[Done]\n    D --> E\n\`\`\`\n\n`;
+        cursorOffset = insert.length;
+        break;
+      case 'chart':
+        insert = `\n\n\`\`\`chart\ntype: bar\nlabels: [Q1, Q2, Q3, Q4]\ndatasets:\n  - label: Growth Metrics\n    data: [65, 82, 110, 145]\n\`\`\`\n\n`;
+        cursorOffset = insert.length;
+        break;
+      case 'map':
+        insert = `\n\n\`\`\`map\nname: Project Location\nlat: 28.6139\nlng: 77.2090\nzoom: 12\n\`\`\`\n\n`;
+        cursorOffset = insert.length;
+        break;
+      case 'callout':
+        insert = `\n\n> [!NOTE]\n> ${selected || 'Important takeaway or operational guidance here.'}\n\n`;
+        cursorOffset = insert.length;
+        break;
+    }
+
+    textarea.value = val.substring(0, start) + insert + val.substring(end);
+    textarea.focus();
+    textarea.setSelectionRange(start + cursorOffset, start + cursorOffset);
+    textarea.dispatchEvent(new Event('input'));
+  });
+}
+
+/* ==========================================================================
+   18. Keyboard Shortcuts & Cheatsheet Modal
+   ========================================================================== */
+function initShortcutsUI() {
+  const modal = document.getElementById('modal-shortcuts');
+  const openBtn = document.getElementById('btn-open-shortcuts');
+  const closeBtn = document.getElementById('btn-close-shortcuts');
+  const doneBtn = document.getElementById('btn-done-shortcuts');
+
+  const openShortcuts = () => {
+    if (modal) modal.classList.add('active');
+  };
+
+  const closeShortcuts = () => {
+    if (modal) modal.classList.remove('active');
+  };
+
+  if (openBtn) openBtn.addEventListener('click', openShortcuts);
+  if (closeBtn) closeBtn.addEventListener('click', closeShortcuts);
+  if (doneBtn) doneBtn.addEventListener('click', closeShortcuts);
+
+  window.addEventListener('keydown', (e) => {
+    const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+    const cmdOrCtrl = isMac ? e.metaKey : e.ctrlKey;
+
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+      document.querySelectorAll('.dropdown-menu.show').forEach(d => d.classList.remove('show'));
+      return;
+    }
+
+    if ((e.key === '?' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT') ||
+        (cmdOrCtrl && e.key === '/')) {
+      e.preventDefault();
+      openShortcuts();
+      return;
+    }
+
+    if (cmdOrCtrl && e.key === 'Enter') {
+      e.preventDefault();
+      const convertBtn = document.getElementById('btn-convert');
+      if (convertBtn && !convertBtn.disabled) convertBtn.click();
+      return;
+    }
+
+    if (cmdOrCtrl && (e.key === 'e' || e.key === 'E')) {
+      e.preventDefault();
+      const toggleBtn = document.getElementById('btn-toggle-view');
+      if (toggleBtn) toggleBtn.click();
+      return;
+    }
+
+    if (cmdOrCtrl && e.shiftKey && (e.key === 'p' || e.key === 'P')) {
+      e.preventDefault();
+      const printBtn = document.getElementById('btn-toggle-print-preview');
+      if (printBtn) printBtn.click();
+      return;
+    }
+
+    if (cmdOrCtrl && e.shiftKey && (e.key === 'h' || e.key === 'H')) {
+      e.preventDefault();
+      const histBtn = document.getElementById('btn-open-history');
+      if (histBtn) histBtn.click();
+      return;
+    }
+
+    if (cmdOrCtrl && e.shiftKey && (e.key === 's' || e.key === 'S')) {
+      e.preventDefault();
+      const setBtn = document.getElementById('btn-open-settings');
+      if (setBtn) setBtn.click();
+      return;
+    }
+  });
+}
+
+/* ==========================================================================
+   19. In-Document Preview Search & Filter
+   ========================================================================== */
+function initPreviewSearch() {
+  const input = document.getElementById('preview-search-input');
+  const countEl = document.getElementById('preview-search-count');
+  if (!input) return;
+
+  let matches = [];
+  let currentIndex = -1;
+
+  function clearHighlights() {
+    const article = document.querySelector('.doc-article');
+    if (!article) return;
+    const highlighted = article.querySelectorAll('mark.search-match');
+    highlighted.forEach((mark) => {
+      const parent = mark.parentNode;
+      if (parent) {
+        parent.replaceChild(document.createTextNode(mark.textContent), mark);
+        parent.normalize();
+      }
+    });
+    matches = [];
+    currentIndex = -1;
+    if (countEl) countEl.style.display = 'none';
+  }
+
+  function performSearch(query) {
+    clearHighlights();
+    const article = document.querySelector('.doc-article');
+    if (!article || !query || query.length < 2) return;
+
+    const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    const walker = document.createTreeWalker(article, NodeFilter.SHOW_TEXT, null, false);
+    const textNodes = [];
+
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      if (node.parentElement && !['SCRIPT', 'STYLE', 'BUTTON'].includes(node.parentElement.tagName)) {
+        if (regex.test(node.nodeValue)) {
+          textNodes.push(node);
+        }
+      }
+    }
+
+    textNodes.forEach((node) => {
+      const parent = node.parentNode;
+      const frag = document.createDocumentFragment();
+      let lastIdx = 0;
+      node.nodeValue.replace(regex, (match, p1, offset) => {
+        frag.appendChild(document.createTextNode(node.nodeValue.slice(lastIdx, offset)));
+        const mark = document.createElement('mark');
+        mark.className = 'search-match';
+        mark.textContent = p1;
+        frag.appendChild(mark);
+        matches.push(mark);
+        lastIdx = offset + p1.length;
+      });
+      frag.appendChild(document.createTextNode(node.nodeValue.slice(lastIdx)));
+      parent.replaceChild(frag, node);
+    });
+
+    if (countEl) {
+      if (matches.length > 0) {
+        currentIndex = 0;
+        matches[0].classList.add('current-match');
+        matches[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        countEl.textContent = `1/${matches.length}`;
+        countEl.style.display = 'inline';
+      } else {
+        countEl.textContent = '0/0';
+        countEl.style.display = 'inline';
+      }
+    }
+  }
+
+  input.addEventListener('input', () => {
+    performSearch(input.value.trim());
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && matches.length > 0) {
+      e.preventDefault();
+      matches[currentIndex].classList.remove('current-match');
+      if (e.shiftKey) {
+        currentIndex = (currentIndex - 1 + matches.length) % matches.length;
+      } else {
+        currentIndex = (currentIndex + 1) % matches.length;
+      }
+      matches[currentIndex].classList.add('current-match');
+      matches[currentIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (countEl) countEl.textContent = `${currentIndex + 1}/${matches.length}`;
+    }
+  });
+}
+
+/* ==========================================================================
+   20. Copy Buttons on Code Blocks & Tables
+   ========================================================================== */
+function attachBlockCopyButtons(container) {
+  if (!container) return;
+
+  // 1. Code blocks
+  const codeBlocks = container.querySelectorAll('pre');
+  codeBlocks.forEach((pre) => {
+    if (pre.querySelector('.btn-copy-code')) return;
+    pre.style.position = 'relative';
+
+    const copyBtn = document.createElement('button');
+    copyBtn.type = 'button';
+    copyBtn.className = 'btn-copy-code';
+    copyBtn.setAttribute('aria-label', 'Copy code snippet');
+    copyBtn.innerHTML = `
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      </svg>
+      <span>Copy</span>
+    `;
+
+    copyBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const code = pre.querySelector('code')?.innerText || pre.innerText;
+      try {
+        await navigator.clipboard.writeText(code);
+        copyBtn.innerHTML = `<span>Copied!</span>`;
+        copyBtn.classList.add('copied');
+        setTimeout(() => {
+          copyBtn.innerHTML = `
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            <span>Copy</span>
+          `;
+          copyBtn.classList.remove('copied');
+        }, 1600);
+      } catch (err) {
+        showToast('Failed to copy', 'error');
+      }
+    });
+
+    pre.appendChild(copyBtn);
+  });
+
+  // 2. Tables
+  const tables = container.querySelectorAll('table');
+  tables.forEach((table) => {
+    const parent = table.parentElement;
+    if (!parent || parent.classList.contains('table-responsive-wrapper')) return;
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'table-responsive-wrapper';
+    wrapper.style.position = 'relative';
+    parent.insertBefore(wrapper, table);
+    wrapper.appendChild(table);
+
+    const copyBtn = document.createElement('button');
+    copyBtn.type = 'button';
+    copyBtn.className = 'btn-copy-code btn-copy-table';
+    copyBtn.setAttribute('aria-label', 'Copy table as CSV');
+    copyBtn.innerHTML = `
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      </svg>
+      <span>Copy CSV</span>
+    `;
+
+    copyBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const csv = Array.from(table.rows).map(row => 
+        Array.from(row.cells).map(cell => `"${cell.innerText.replace(/"/g, '""')}"`).join(',')
+      ).join('\n');
+
+      try {
+        await navigator.clipboard.writeText(csv);
+        copyBtn.innerHTML = `<span>Copied CSV!</span>`;
+        copyBtn.classList.add('copied');
+        setTimeout(() => {
+          copyBtn.innerHTML = `
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            <span>Copy CSV</span>
+          `;
+          copyBtn.classList.remove('copied');
+        }, 1600);
+      } catch (err) {
+        showToast('Failed to copy table', 'error');
+      }
+    });
+
+    wrapper.appendChild(copyBtn);
+  });
+}
+
+/* ==========================================================================
+   21. Document Reading Time & Stats Badge
+   ========================================================================== */
+function updateDocumentStats(markdown) {
+  const statsEl = document.getElementById('preview-doc-stats');
+  if (!statsEl) return;
+  if (!markdown || !markdown.trim()) {
+    statsEl.style.display = 'none';
+    return;
+  }
+
+  const words = countWords(markdown);
+  const minutes = Math.max(1, Math.ceil(words / 220));
+  const tables = (markdown.match(/\|[\s-]+\|/g) || []).length;
+  const diagrams = (markdown.match(/```(mermaid|chart|map)/g) || []).length;
+
+  const parts = [`⏱️ ${minutes} min read`, `📝 ${words.toLocaleString()} words`];
+  if (tables > 0) parts.push(`📊 ${tables} table${tables > 1 ? 's' : ''}`);
+  if (diagrams > 0) parts.push(`📐 ${diagrams} visual${diagrams > 1 ? 's' : ''}`);
+
+  statsEl.textContent = parts.join(' • ');
+  statsEl.style.display = 'inline-flex';
 }
