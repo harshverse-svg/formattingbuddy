@@ -575,21 +575,83 @@
         <button id="btn-close-settings" class="btn btn-sm btn-outline" type="button">Close</button>
       </div>
       <div class="modal-body">
-        <p class="modal-note">
-          Configure API credentials for document generation. Keys are AES-GCM encrypted using your device passcode and never logged or transmitted anywhere except directly to the chosen provider.
-        </p>
+        <div class="appearance-tabs" role="tablist">
+          <button class="appearance-tab-btn active" id="tab-settings-appearance" role="tab" type="button">🎨 Appearance & Wallpapers</button>
+          <button class="appearance-tab-btn" id="tab-settings-keys" role="tab" type="button">🔑 AI Providers (Keys)</button>
+        </div>
 
-        <div id="settings-providers-container" style="display:flex; flex-direction:column; gap:12px;"></div>
+        <!-- Panel 1: Appearance & Photo Theme (Stage D) -->
+        <div id="panel-settings-appearance">
+          <div style="margin-bottom:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <span style="font-size:0.88rem; font-weight:600; color:var(--text);">Wallpaper Background</span>
+              <div style="display:flex; gap:8px;">
+                <input type="file" id="input-custom-wallpaper" accept="image/png,image/jpeg,image/webp" style="display:none;">
+                <button id="btn-upload-wallpaper" class="btn btn-sm btn-outline" type="button">Upload Custom...</button>
+                <button id="btn-remove-wallpaper" class="btn btn-sm btn-outline" type="button" style="display:none; color:var(--danger); border-color:var(--danger-border);">Remove</button>
+              </div>
+            </div>
+            <p style="font-size:0.78rem; color:var(--text-muted); margin-bottom:8px;">Choose a bundled royalty-free atmosphere, upload your own photo, or keep plain solid surfaces.</p>
+            <div id="wallpaper-grid-container" class="wallpaper-grid"></div>
+          </div>
 
-        <!-- Danger Zone: Reset App (Stage 0B) -->
-        <div class="settings-danger-zone" style="margin-top:20px; padding:16px; border:1px solid #fca5a5; border-radius:8px; background:rgba(239, 68, 68, 0.04);">
-          <div style="font-weight:600; color:var(--danger, #ef4444); font-size:0.88rem; margin-bottom:4px;">Danger Zone</div>
-          <p style="font-size:0.78rem; color:var(--text-muted); margin-bottom:12px; line-height:1.4;">
-            Permanently erase all local data on this device: passcode verification hash, encrypted API keys, autosaved drafts, cached OCR pages, and parsed files.
+          <!-- Glass & Controls Grid -->
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px; margin-top:16px; padding:14px; background:var(--surface-subtle); border-radius:12px; border:1px solid var(--border);">
+            <div>
+              <div style="display:flex; justify-content:space-between; font-size:0.82rem; margin-bottom:4px;">
+                <span style="font-weight:600; color:var(--text);">Background Dim</span>
+                <span id="readout-bg-dim" style="color:var(--text-muted);">35%</span>
+              </div>
+              <input type="range" id="range-bg-dim" min="0" max="80" value="35" style="width:100%; accent-color:var(--accent);">
+            </div>
+
+            <div>
+              <div style="display:flex; justify-content:space-between; font-size:0.82rem; margin-bottom:4px;">
+                <span style="font-weight:600; color:var(--text);">Panel Opacity</span>
+                <span id="readout-panel-opacity" style="color:var(--text-muted);">88%</span>
+              </div>
+              <input type="range" id="range-panel-opacity" min="50" max="100" value="88" style="width:100%; accent-color:var(--accent);">
+            </div>
+
+            <div style="grid-column: 1 / -1;">
+              <span style="font-size:0.82rem; font-weight:600; color:var(--text); display:block; margin-bottom:4px;">Accent Color Presets</span>
+              <div id="accent-presets-container" class="accent-preset-row"></div>
+            </div>
+
+            <div style="display:flex; align-items:center; gap:8px;">
+              <input type="checkbox" id="cb-glass-blur" style="accent-color:var(--accent);">
+              <label for="cb-glass-blur" style="font-size:0.82rem; color:var(--text); cursor:pointer;">
+                <strong>Glass Blur Effect</strong> <span style="font-size:0.75rem; color:var(--text-muted);">(GPU blur)</span>
+              </label>
+            </div>
+
+            <div style="display:flex; align-items:center; gap:8px;">
+              <input type="checkbox" id="cb-low-power" style="accent-color:var(--accent);">
+              <label for="cb-low-power" style="font-size:0.82rem; color:var(--text); cursor:pointer;">
+                <strong>Low Power Mode</strong> <span style="font-size:0.75rem; color:var(--text-muted);">(no animations)</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel 2: AI Providers (Keys) -->
+        <div id="panel-settings-keys" style="display:none;">
+          <p class="modal-note" style="margin-bottom:12px;">
+            Configure API credentials for document generation. Keys are AES-GCM encrypted using your device passcode and never logged or transmitted anywhere except directly to the chosen provider.
           </p>
-          <button id="btn-reset-app" class="btn btn-sm btn-danger" type="button" aria-label="Reset app and wipe local data">
-            Reset All Local Data
-          </button>
+
+          <div id="settings-providers-container" style="display:flex; flex-direction:column; gap:12px;"></div>
+
+          <!-- Danger Zone: Reset App (Stage 0B) -->
+          <div class="settings-danger-zone" style="margin-top:20px; padding:16px; border:1px solid #fca5a5; border-radius:8px; background:rgba(239, 68, 68, 0.04);">
+            <div style="font-weight:600; color:var(--danger, #ef4444); font-size:0.88rem; margin-bottom:4px;">Danger Zone</div>
+            <p style="font-size:0.78rem; color:var(--text-muted); margin-bottom:12px; line-height:1.4;">
+              Permanently erase all local data on this device: passcode verification hash, encrypted API keys, autosaved drafts, cached OCR pages, and parsed files.
+            </p>
+            <button id="btn-reset-app" class="btn btn-sm btn-danger" type="button" aria-label="Reset app and wipe local data">
+              Reset All Local Data
+            </button>
+          </div>
         </div>
       </div>
       <div class="modal-footer">
