@@ -1,10 +1,11 @@
 /**
  * FormattingBuddy - Main Application Controller
+ * Minimal, modern static PWA with zero backend.
  */
 import { auth } from './auth.js';
 import { state } from './state.js';
 import { providers, PROVIDER_DEFS } from './providers.js';
-import { ConversionPipeline, countWords } from './chunker.js';
+import { ConversionPipeline, countWords, chunkText } from './chunker.js';
 import { renderDocumentToElement, extractToc } from './markdown.js';
 import { exportToSelfContainedHtml } from './export/html.js';
 import { exportToMarkdown } from './export/markdown.js';
@@ -12,9 +13,18 @@ import { exportToPdf } from './export/pdf.js';
 import { exportToDocx } from './export/docx.js';
 import { exportToZip } from './export/zip.js';
 import { SAMPLES } from './samples.js';
+import { saveParsedFile, getStorageStats, clearAllStoredFiles } from './db.js';
+import { OcrRunner } from './ocr.js';
+import * as pdfjsLib from '../vendor/pdf.min.mjs';
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = './vendor/pdf.worker.min.mjs';
 
 let activePipeline = null;
 let deferredInstallPrompt = null;
+let pendingFileObject = null;
+let pendingFileBuffer = null;
+let pendingParsedResult = null;
+let pendingPdfDoc = null;
 
 // Initialize app when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
@@ -23,7 +33,13 @@ document.addEventListener('DOMContentLoaded', () => {
   initTheme();
   initAuthUI();
   initSettingsUI();
+  initOnboardingUI();
+  initHelpUI();
+  initStatusBarUI();
+  initEmptyStateUI();
   initEditorUI();
+  initEstimatorUI();
+  initOcrUI();
   initExportUI();
   initSamplesUI();
   restoreState();
@@ -93,7 +109,7 @@ function initPwa() {
 }
 
 /* ==========================================================================
-   2. Theme Switcher (Stage 1: 3 Themes - Light Soft Blue, Dark Midnight, Slate)
+   2. Theme Switcher (3 Themes: Light Soft Blue, Dark Midnight, Slate)
    ========================================================================== */
 function initTheme() {
   const currentTheme = state.getTheme();
@@ -130,13 +146,10 @@ function updateThemeIcon(btn, theme) {
   btn.setAttribute('title', `Theme: ${label} (Click to switch)`);
 
   if (theme === 'dark') {
-    // Moon for Midnight
     btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
   } else if (theme === 'slate') {
-    // Slate layer/orbital icon
     btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>`;
   } else {
-    // Sun for Soft Blue
     btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>`;
   }
 }
@@ -200,12 +213,16 @@ function initAuthUI() {
         await providers.loadDecryptedKeys(derivedKey);
         hideAuthModal();
         showToast('Passcode created and workspace unlocked.', 'success');
+        checkFirstRunOnboarding();
       } else {
         const derivedKey = await auth.unlock(val);
         await providers.loadDecryptedKeys(derivedKey);
         hideAuthModal();
         showToast('Workspace unlocked.', 'success');
+        checkFirstRunOnboarding();
       }
+      updateStatusBarStorage();
+      updateStatusBarProvider();
     } catch (err) {
       errorEl.textContent = err.message;
       errorEl.style.display = 'block';
@@ -231,11 +248,12 @@ function initAuthUI() {
   }
 
   if (resetBtn) {
-    resetBtn.addEventListener('click', () => {
+    resetBtn.addEventListener('click', async () => {
       const confirmed = window.confirm(
-        'Warning: "Reset App" will completely wipe your local passcode, all stored API keys, and your autosaved drafts from this device. Are you sure?'
+        'Warning: "Reset App" will completely wipe your local passcode, all stored API keys, and your autosaved drafts and files from this device. Are you sure?'
       );
       if (confirmed) {
+        await clearAllStoredFiles();
         auth.resetApp();
       }
     });
@@ -247,16 +265,118 @@ function initAuthUI() {
   } else if (!auth.isAuthenticated) {
     showAuthModal(false);
   }
-
-  auth.onChange((status) => {
-    if (!status.isAuthenticated) {
-      showAuthModal(!status.isSetup);
-    }
-  });
 }
 
 /* ==========================================================================
-   4. Settings & API Key Manager (Stage 2)
+   4. Onboarding & Help UI (Stage 3)
+   ========================================================================== */
+function initOnboardingUI() {
+  const modal = document.getElementById('modal-welcome');
+  const startBtn = document.getElementById('btn-welcome-start');
+
+  if (startBtn) {
+    startBtn.addEventListener('click', () => {
+      localStorage.setItem('fb_onboarding_done', 'true');
+      modal.classList.remove('active');
+
+      const enabled = providers.getEnabledProviders();
+      if (enabled.length === 0) {
+        showToast('Add your first API key in Settings to begin formatting.', 'info');
+        document.getElementById('btn-open-settings')?.click();
+      }
+    });
+  }
+}
+
+function checkFirstRunOnboarding() {
+  const done = localStorage.getItem('fb_onboarding_done');
+  if (!done) {
+    const modal = document.getElementById('modal-welcome');
+    if (modal) modal.classList.add('active');
+  }
+}
+
+function initHelpUI() {
+  const modal = document.getElementById('modal-help');
+  const openBtn = document.getElementById('btn-open-help');
+  const closeBtn = document.getElementById('btn-close-help');
+  const doneBtn = document.getElementById('btn-help-done');
+
+  if (openBtn && modal) {
+    openBtn.addEventListener('click', () => modal.classList.add('active'));
+  }
+  const close = () => modal && modal.classList.remove('active');
+  if (closeBtn) closeBtn.addEventListener('click', close);
+  if (doneBtn) doneBtn.addEventListener('click', close);
+}
+
+/* ==========================================================================
+   5. Persistent Status Bar & Storage UI (Stage 3)
+   ========================================================================== */
+function initStatusBarUI() {
+  const clearBtn = document.getElementById('btn-clear-storage');
+
+  if (clearBtn) {
+    clearBtn.addEventListener('click', async () => {
+      const confirmed = window.confirm('Clear all stored files and cached chunk results? This frees local storage.');
+      if (confirmed) {
+        await clearAllStoredFiles();
+        showToast('Storage cleared.', 'info');
+        updateStatusBarStorage();
+      }
+    });
+  }
+
+  updateStatusBarStorage();
+  updateStatusBarProvider();
+}
+
+async function updateStatusBarStorage() {
+  const storageEl = document.getElementById('status-bar-storage');
+  if (!storageEl) return;
+
+  try {
+    const stats = await getStorageStats();
+    const mbUsed = (stats.estimatedBytes / (1024 * 1024)).toFixed(1);
+    const sizeStr = stats.estimatedBytes > 0 ? ` (${mbUsed} MB)` : '';
+    storageEl.textContent = `Storage: ${stats.filesCount} file${stats.filesCount === 1 ? '' : 's'}, ${stats.chunksCount} cached section${stats.chunksCount === 1 ? '' : 's'}${sizeStr}`;
+  } catch {
+    storageEl.textContent = 'Storage: Local IndexedDB ready';
+  }
+}
+
+function updateStatusBarProvider() {
+  const providerEl = document.getElementById('status-bar-provider');
+  if (!providerEl) return;
+
+  const currentChoice = state.get().provider || 'auto';
+  if (currentChoice === 'auto') {
+    const enabled = providers.getEnabledProviders();
+    providerEl.textContent = `Provider: Auto fallback (${enabled.length} ready)`;
+  } else {
+    const def = PROVIDER_DEFS[currentChoice];
+    const s = providers.getSettings(currentChoice);
+    const name = def ? def.name : currentChoice;
+    const model = s.model ? ` (${s.model})` : '';
+    providerEl.textContent = `Provider: ${name}${model}`;
+  }
+}
+
+/* ==========================================================================
+   6. Empty State in Preview (Stage 3)
+   ========================================================================== */
+function initEmptyStateUI() {
+  const emptySampleBtn = document.getElementById('btn-empty-sample');
+  if (emptySampleBtn) {
+    emptySampleBtn.addEventListener('click', () => {
+      const processItem = document.querySelector('[data-sample-id="process"]');
+      if (processItem) processItem.click();
+    });
+  }
+}
+
+/* ==========================================================================
+   7. Settings & API Key Manager (Stage 2)
    ========================================================================== */
 function initSettingsUI() {
   const modal = document.getElementById('modal-settings');
@@ -277,6 +397,7 @@ function initSettingsUI() {
   const closeModal = () => {
     modal.classList.remove('active');
     updateProviderSelectDropdown();
+    updateStatusBarProvider();
   };
 
   closeBtn.addEventListener('click', closeModal);
@@ -333,7 +454,6 @@ function initSettingsUI() {
 
       container.appendChild(card);
 
-      // Event handlers for this card
       const enableCb = card.querySelector(`#enable-${id}`);
       const keyInput = card.querySelector(`#key-${id}`);
       const toggleKeyBtn = card.querySelector(`#toggle-key-${id}`);
@@ -344,10 +464,12 @@ function initSettingsUI() {
 
       enableCb.addEventListener('change', () => {
         providers.updateSettings(id, { enabled: enableCb.checked });
+        updateStatusBarProvider();
       });
 
       modelInput.addEventListener('change', () => {
         providers.updateSettings(id, { model: modelInput.value.trim() });
+        updateStatusBarProvider();
       });
 
       if (baseUrlInput) {
@@ -361,6 +483,7 @@ function initSettingsUI() {
           const cryptoKey = auth.getActiveKey();
           await providers.setKey(id, keyInput.value, cryptoKey);
           showToast(`Saved key for ${def.name}.`, 'success');
+          updateStatusBarProvider();
         } catch (err) {
           showToast(`Failed saving key: ${err.message}`, 'error');
         }
@@ -384,7 +507,6 @@ function initSettingsUI() {
         statusEl.textContent = 'Connecting...';
 
         try {
-          // Temporarily save inputs before testing
           providers.updateSettings(id, {
             model: modelInput.value.trim(),
             baseUrl: baseUrlInput ? baseUrlInput.value.trim() : undefined
@@ -434,7 +556,7 @@ function updateProviderSelectDropdown() {
 }
 
 /* ==========================================================================
-   5. Editor UI, Chunking Pipeline & Autosave (Stage 3)
+   8. Editor UI, 20 MB Web Worker Parser & Chunking (Stages 3 & 4)
    ========================================================================== */
 function initEditorUI() {
   const textarea = document.getElementById('text-input');
@@ -474,7 +596,6 @@ function initEditorUI() {
     });
   }
 
-  // Update word count & autosave draft
   function updateWords() {
     const text = textarea.value;
     const words = countWords(text);
@@ -485,19 +606,21 @@ function initEditorUI() {
 
   textarea.addEventListener('input', updateWords);
 
-  // Options changes
   docTypeSelect.addEventListener('change', () => state.set({ docType: docTypeSelect.value }));
   langSelect.addEventListener('change', () => state.set({ language: langSelect.value }));
   diagramSelect.addEventListener('change', () => state.set({ diagramLevel: diagramSelect.value }));
-  providerSelect.addEventListener('change', () => state.set({ provider: providerSelect.value }));
+  providerSelect.addEventListener('change', () => {
+    state.set({ provider: providerSelect.value });
+    updateStatusBarProvider();
+  });
 
-  // File drag & drop (2MB max limit)
-  const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2 MB
+  // Multi-Format File drag & drop (up to 20 MB)
+  const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
 
   browseBtn.addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', (e) => {
     if (e.target.files.length > 0) {
-      handleFile(e.target.files[0]);
+      handleDocumentFile(e.target.files[0]);
     }
   });
 
@@ -514,29 +637,103 @@ function initEditorUI() {
     e.preventDefault();
     dropzone.classList.remove('dragover');
     if (e.dataTransfer.files.length > 0) {
-      handleFile(e.dataTransfer.files[0]);
+      handleDocumentFile(e.dataTransfer.files[0]);
     }
   });
 
-  function handleFile(file) {
+  async function handleDocumentFile(file) {
     if (file.size > MAX_FILE_SIZE) {
-      showToast('File size exceeds the 2 MB limit.', 'error');
+      showToast('File size exceeds the 20 MB limit. Please select a smaller file.', 'error');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      textarea.value = event.target.result;
-      updateWords();
-      showToast(`Loaded ${file.name} (${countWords(textarea.value)} words).`, 'success');
-    };
-    reader.onerror = () => {
-      showToast('Failed to read file.', 'error');
-    };
-    reader.readAsText(file);
+
+    const nameLower = file.name.toLowerCase();
+    if (nameLower.endsWith('.doc') || nameLower.endsWith('.ppt')) {
+      showToast('Legacy .doc and .ppt formats are not supported. Please open the file in Word/PowerPoint and Save As .docx or .pptx.', 'error');
+      return;
+    }
+
+    // Retain references for potential OCR
+    pendingFileObject = file;
+
+    // Show progress bar
+    progressBox.classList.add('active');
+    progressBar.style.width = '10%';
+    progressText.textContent = `Reading ${file.name}...`;
+    progressPercent.textContent = '10%';
+
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      pendingFileBuffer = arrayBuffer;
+
+      // Launch Web Worker parser
+      const worker = new Worker('./js/workers/parse-worker.js', { type: 'module' });
+
+      worker.onmessage = async (e) => {
+        const msg = e.data;
+        if (msg.type === 'progress') {
+          progressBar.style.width = `${msg.percent}%`;
+          progressText.textContent = msg.status;
+          progressPercent.textContent = `${msg.percent}%`;
+        } else if (msg.type === 'complete') {
+          worker.terminate();
+          progressBox.classList.remove('active');
+
+          const result = msg.result;
+          pendingParsedResult = result;
+
+          // If PDF or image has scanned pages needing OCR
+          if (result.hasScannedPages) {
+            promptOcrModal(file, result, arrayBuffer);
+            return;
+          }
+
+          // Otherwise save document & update textarea
+          textarea.value = result.text;
+          updateWords();
+
+          await saveParsedFile({
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            text: result.text,
+            pageCount: result.pageCount
+          });
+
+          await updateStatusBarStorage();
+          showToast(`Parsed ${file.name}: ${result.pageCount} page(s), ${countWords(result.text)} words.`, 'success');
+
+          // Open Estimator Dialog
+          openEstimatorDialog(result.text, result.pageCount);
+        } else if (msg.type === 'error') {
+          worker.terminate();
+          progressBox.classList.remove('active');
+          showToast(`Failed to parse file: ${msg.message}`, 'error');
+        }
+      };
+
+      worker.onerror = (err) => {
+        worker.terminate();
+        progressBox.classList.remove('active');
+        showToast(`Worker error: ${err.message}`, 'error');
+      };
+
+      // Transfer ArrayBuffer to worker for zero-copy performance
+      worker.postMessage({
+        action: 'parse',
+        fileData: arrayBuffer,
+        fileName: file.name,
+        fileType: file.type,
+        fileSize: file.size
+      });
+    } catch (err) {
+      progressBox.classList.remove('active');
+      showToast(`Error opening file: ${err.message}`, 'error');
+    }
   }
 
-  // Convert Pipeline Execution
-  convertBtn.addEventListener('click', async () => {
+  // Convert button opens the Pre-Conversion Estimator
+  convertBtn.addEventListener('click', () => {
     if (!auth.isAuthenticated) {
       showToast('Please unlock the workspace first.', 'warning');
       return;
@@ -544,58 +741,12 @@ function initEditorUI() {
 
     const text = textarea.value.trim();
     if (!text) {
-      showToast('Please paste or upload some plain text first.', 'warning');
+      showToast('Please paste text or upload a document first.', 'warning');
       return;
     }
 
-    // Switch to preview tab on mobile
-    if (tabPreviewBtn && window.innerWidth <= 900) {
-      tabPreviewBtn.click();
-    }
-
-    activePipeline = new ConversionPipeline({
-      text: text,
-      docType: docTypeSelect.value,
-      language: langSelect.value,
-      diagramLevel: diagramSelect.value,
-      provider: providerSelect.value,
-      onProgress: (p) => {
-        progressBox.classList.add('active');
-        progressBar.style.width = `${p.percent}%`;
-        progressText.textContent = p.status;
-        progressPercent.textContent = `${p.percent}%`;
-      },
-      onNotice: (notice) => {
-        showToast(notice, 'warning');
-      }
-    });
-
-    try {
-      convertBtn.disabled = true;
-      convertBtn.textContent = 'Formatting...';
-      cancelBtn.style.display = 'inline-flex';
-      progressBox.classList.add('active');
-
-      const finalMarkdown = await activePipeline.run(0);
-      state.set({ markdownOutput: finalMarkdown });
-      await renderPreview(finalMarkdown);
-      showToast('Document conversion completed!', 'success');
-    } catch (err) {
-      if (err.message.includes('cancelled')) {
-        showToast('Conversion cancelled.', 'info');
-      } else {
-        showToast(`Conversion error: ${err.message}`, 'error');
-        // If there was a partial failure, offer resume button
-        if (typeof err.failedChunkIndex === 'number') {
-          showResumeOption(err.failedChunkIndex);
-        }
-      }
-    } finally {
-      convertBtn.disabled = false;
-      convertBtn.textContent = 'Convert';
-      cancelBtn.style.display = 'none';
-      setTimeout(() => progressBox.classList.remove('active'), 1500);
-    }
+    const estimatedPages = Math.max(1, Math.ceil(countWords(text) / 400));
+    openEstimatorDialog(text, estimatedPages);
   });
 
   cancelBtn.addEventListener('click', () => {
@@ -605,42 +756,323 @@ function initEditorUI() {
       cancelBtn.textContent = 'Cancelling...';
     }
   });
+}
 
-  function showResumeOption(failedIndex) {
-    progressText.innerHTML = `Failed at section ${failedIndex + 1}. <button id="btn-resume" class="btn btn-sm btn-outline" style="margin-left:8px;">Resume</button>`;
-    const resumeBtn = document.getElementById('btn-resume');
-    if (resumeBtn) {
-      resumeBtn.addEventListener('click', async () => {
-        try {
-          convertBtn.disabled = true;
-          cancelBtn.style.display = 'inline-flex';
-          const finalMarkdown = await activePipeline.run(failedIndex);
-          state.set({ markdownOutput: finalMarkdown });
-          await renderPreview(finalMarkdown);
-          showToast('Resumed conversion completed!', 'success');
-        } catch (e) {
-          showToast(`Resume error: ${e.message}`, 'error');
-        } finally {
-          convertBtn.disabled = false;
-          cancelBtn.style.display = 'none';
-        }
-      });
+/* ==========================================================================
+   9. Pre-Conversion Estimator (Stage 4)
+   ========================================================================== */
+function initEstimatorUI() {
+  const modal = document.getElementById('modal-estimator');
+  const closeBtn = document.getElementById('btn-close-estimator');
+  const cancelBtn = document.getElementById('btn-estimator-cancel');
+  const startBtn = document.getElementById('btn-estimator-start');
+  const rangeSelect = document.getElementById('est-page-range');
+
+  const close = () => modal.classList.remove('active');
+  if (closeBtn) closeBtn.addEventListener('click', close);
+  if (cancelBtn) cancelBtn.addEventListener('click', close);
+
+  if (startBtn) {
+    startBtn.addEventListener('click', async () => {
+      close();
+      const scope = rangeSelect.value;
+      await runConversionPipeline(scope);
+    });
+  }
+}
+
+function openEstimatorDialog(text, pageCount = 1) {
+  const modal = document.getElementById('modal-estimator');
+  if (!modal) return;
+
+  const chunks = chunkText(text);
+  const totalChunks = Math.max(1, chunks.length);
+
+  document.getElementById('est-pages-count').textContent = pageCount;
+  document.getElementById('est-chunks-count').textContent = totalChunks;
+  document.getElementById('est-calls-count').textContent = totalChunks;
+
+  const warningEl = document.getElementById('est-large-warning');
+  const warningCalls = document.getElementById('est-large-calls');
+
+  if (totalChunks > 10) {
+    warningEl.style.display = 'block';
+    warningCalls.textContent = totalChunks;
+  } else {
+    warningEl.style.display = 'none';
+  }
+
+  modal.classList.add('active');
+}
+
+async function runConversionPipeline(scope = 'all') {
+  const textarea = document.getElementById('text-input');
+  const convertBtn = document.getElementById('btn-convert');
+  const cancelBtn = document.getElementById('btn-cancel-pipeline');
+  const progressBox = document.getElementById('progress-container');
+  const progressBar = document.getElementById('progress-bar-fill');
+  const progressText = document.getElementById('progress-text');
+  const progressPercent = document.getElementById('progress-percent');
+  const providerSelect = document.getElementById('provider-select');
+  const docTypeSelect = document.getElementById('select-doctype');
+  const langSelect = document.getElementById('select-language');
+  const diagramSelect = document.getElementById('select-diagram-level');
+  const tabPreviewBtn = document.getElementById('tab-preview');
+
+  let textToProcess = textarea.value.trim();
+  if (!textToProcess) return;
+
+  // Apply scope filtering if user selected subset
+  if (scope === 'first1') {
+    const allChunks = chunkText(textToProcess);
+    textToProcess = allChunks[0] || textToProcess;
+  } else if (scope === 'first5') {
+    const allChunks = chunkText(textToProcess);
+    textToProcess = allChunks.slice(0, 5).join('\n\n');
+  }
+
+  // Switch to preview tab on mobile
+  if (tabPreviewBtn && window.innerWidth <= 900) {
+    tabPreviewBtn.click();
+  }
+
+  activePipeline = new ConversionPipeline({
+    text: textToProcess,
+    docType: docTypeSelect.value,
+    language: langSelect.value,
+    diagramLevel: diagramSelect.value,
+    provider: providerSelect.value,
+    onProgress: (p) => {
+      progressBox.classList.add('active');
+      progressBar.style.width = `${p.percent}%`;
+      progressText.textContent = p.status;
+      progressPercent.textContent = `${p.percent}%`;
+    },
+    onNotice: (notice) => {
+      showToast(notice, 'warning');
     }
+  });
+
+  try {
+    convertBtn.disabled = true;
+    convertBtn.textContent = 'Formatting...';
+    cancelBtn.style.display = 'inline-flex';
+    progressBox.classList.add('active');
+
+    const finalMarkdown = await activePipeline.run(0);
+    state.set({ markdownOutput: finalMarkdown });
+    await renderPreview(finalMarkdown);
+    await updateStatusBarStorage();
+    showToast('Document conversion completed!', 'success');
+  } catch (err) {
+    if (err.message && err.message.includes('cancelled')) {
+      showToast('Conversion cancelled.', 'info');
+    } else {
+      showToast(`Conversion error: ${err.message}`, 'error');
+      if (typeof err.failedChunkIndex === 'number') {
+        showResumeOption(err.failedChunkIndex);
+      }
+    }
+  } finally {
+    convertBtn.disabled = false;
+    convertBtn.textContent = 'Convert';
+    cancelBtn.style.display = 'none';
+    setTimeout(() => progressBox.classList.remove('active'), 1500);
+  }
+}
+
+function showResumeOption(failedIndex) {
+  const progressText = document.getElementById('progress-text');
+  progressText.innerHTML = `Failed at section ${failedIndex + 1}. <button id="btn-resume" class="btn btn-sm btn-outline" style="margin-left:8px;">Resume</button>`;
+  const resumeBtn = document.getElementById('btn-resume');
+  if (resumeBtn) {
+    resumeBtn.addEventListener('click', async () => {
+      const convertBtn = document.getElementById('btn-convert');
+      const cancelBtn = document.getElementById('btn-cancel-pipeline');
+      try {
+        convertBtn.disabled = true;
+        cancelBtn.style.display = 'inline-flex';
+        const finalMarkdown = await activePipeline.run(failedIndex);
+        state.set({ markdownOutput: finalMarkdown });
+        await renderPreview(finalMarkdown);
+        await updateStatusBarStorage();
+        showToast('Resumed conversion completed!', 'success');
+      } catch (e) {
+        showToast(`Resume error: ${e.message}`, 'error');
+      } finally {
+        convertBtn.disabled = false;
+        cancelBtn.style.display = 'none';
+      }
+    });
   }
 }
 
 /* ==========================================================================
-   6. Preview Rendering & Table of Contents (Stage 4)
+   10. Scanned Document OCR (Stage 5)
+   ========================================================================== */
+function initOcrUI() {
+  const modal = document.getElementById('modal-ocr');
+  const startBtn = document.getElementById('btn-ocr-start');
+  const skipBtn = document.getElementById('btn-ocr-skip');
+  const rangeInput = document.getElementById('ocr-page-range');
+  const textarea = document.getElementById('text-input');
+
+  if (skipBtn) {
+    skipBtn.addEventListener('click', () => {
+      modal.classList.remove('active');
+      if (pendingParsedResult) {
+        textarea.value = pendingParsedResult.text;
+        state.set({ inputText: textarea.value });
+        openEstimatorDialog(textarea.value, pendingParsedResult.pageCount);
+      }
+    });
+  }
+
+  if (startBtn) {
+    startBtn.addEventListener('click', async () => {
+      modal.classList.remove('active');
+
+      const selectedMode = document.querySelector('input[name="ocr-mode"]:checked')?.value || 'local';
+      const rangeVal = rangeInput.value.trim();
+
+      const progressBox = document.getElementById('progress-container');
+      const progressBar = document.getElementById('progress-bar-fill');
+      const progressText = document.getElementById('progress-text');
+      const progressPercent = document.getElementById('progress-percent');
+
+      progressBox.classList.add('active');
+      progressBar.style.width = '10%';
+      progressText.textContent = 'Initializing OCR engine...';
+
+      try {
+        const langSelect = document.getElementById('select-language');
+        const language = langSelect ? langSelect.value : 'English';
+
+        let pages = [];
+        if (pendingParsedResult?.scannedPages?.length > 0) {
+          pages = pendingParsedResult.scannedPages;
+        } else {
+          pages = [1];
+        }
+
+        // Custom range filter (e.g. "1-3")
+        if (rangeVal && rangeVal.toLowerCase() !== 'all') {
+          const match = rangeVal.match(/(\d+)\s*-\s*(\d+)/);
+          if (match) {
+            const start = parseInt(match[1], 10);
+            const end = parseInt(match[2], 10);
+            pages = pages.filter(p => p >= start && p <= end);
+          }
+        }
+
+        let runner = null;
+
+        if (pendingParsedResult?.isImage) {
+          runner = new OcrRunner({
+            imageFile: pendingFileObject,
+            mode: selectedMode,
+            language: language,
+            onProgress: (p) => {
+              progressBar.style.width = `${p.percent}%`;
+              progressText.textContent = p.status;
+              progressPercent.textContent = `${p.percent}%`;
+            }
+          });
+        } else {
+          // Load PDF document for OCR page rendering
+          if (!pendingPdfDoc && pendingFileBuffer) {
+            const loadingTask = pdfjsLib.getDocument({
+              data: new Uint8Array(pendingFileBuffer),
+              useSystemFonts: true
+            });
+            pendingPdfDoc = await loadingTask.promise;
+          }
+
+          runner = new OcrRunner({
+            pdfDocument: pendingPdfDoc,
+            mode: selectedMode,
+            language: language,
+            pages: pages,
+            onProgress: (p) => {
+              progressBar.style.width = `${p.percent}%`;
+              progressText.textContent = p.status;
+              progressPercent.textContent = `${p.percent}%`;
+            }
+          });
+        }
+
+        const ocrResults = await runner.run();
+        const extractedLines = Object.values(ocrResults).filter(Boolean).join('\n\n');
+
+        let combinedText = pendingParsedResult?.text || '';
+        if (combinedText.includes('[Scanned Page')) {
+          // Replace scanned page placeholders with OCR text
+          for (const pageNum in ocrResults) {
+            const placeholder = `[Scanned Page ${pageNum} - Needs OCR]`;
+            combinedText = combinedText.replace(placeholder, ocrResults[pageNum] || '');
+          }
+        } else {
+          combinedText = (combinedText ? combinedText + '\n\n' : '') + extractedLines;
+        }
+
+        textarea.value = combinedText.trim();
+        state.set({ inputText: textarea.value });
+
+        await saveParsedFile({
+          name: pendingFileObject ? pendingFileObject.name : 'OCR Document',
+          size: pendingFileObject ? pendingFileObject.size : 0,
+          type: 'text/ocr',
+          text: textarea.value,
+          pageCount: pages.length
+        });
+
+        await updateStatusBarStorage();
+        showToast('OCR extraction completed successfully.', 'success');
+
+        // Proceed to Estimator
+        openEstimatorDialog(textarea.value, pages.length);
+      } catch (err) {
+        showToast(`OCR failed: ${err.message}`, 'error');
+      } finally {
+        progressBox.classList.remove('active');
+      }
+    });
+  }
+}
+
+function promptOcrModal(file, result, arrayBuffer) {
+  const modal = document.getElementById('modal-ocr');
+  const descEl = document.getElementById('ocr-modal-desc');
+
+  const count = result.scannedPages ? result.scannedPages.length : 1;
+  descEl.textContent = `Found ${count} page${count === 1 ? '' : 's'} in "${file.name}" with no digital text layer. Choose an OCR method:`;
+
+  modal.classList.add('active');
+}
+
+/* ==========================================================================
+   11. Preview Rendering & Table of Contents (Stage 4)
    ========================================================================== */
 async function renderPreview(markdown) {
   const container = document.getElementById('preview-container');
   const tocBox = document.getElementById('toc-container');
   const tocList = document.getElementById('toc-list');
   const rawViewer = document.getElementById('raw-markdown-viewer');
+  const emptyState = document.getElementById('preview-empty-state');
 
   if (rawViewer) {
     rawViewer.textContent = markdown || '';
   }
+
+  if (!markdown || !markdown.trim()) {
+    if (emptyState) emptyState.style.display = 'flex';
+    if (container) container.style.display = 'none';
+    if (tocBox) tocBox.style.display = 'none';
+    return;
+  }
+
+  if (emptyState) emptyState.style.display = 'none';
+  if (container) container.style.display = 'block';
 
   // Build Table of Contents
   const toc = extractToc(markdown);
@@ -657,7 +1089,7 @@ async function renderPreview(markdown) {
     tocBox.style.display = 'none';
   }
 
-  const isDark = state.getTheme() === 'dark';
+  const isDark = state.getTheme() === 'dark' || state.getTheme() === 'slate';
   await renderDocumentToElement(markdown, container, {
     isDark,
     onBlockFix: (blk) => {
@@ -667,13 +1099,12 @@ async function renderPreview(markdown) {
 }
 
 /* ==========================================================================
-   7. Export Downloads (Stage 5)
+   12. Export Downloads (Stage 5)
    ========================================================================== */
 function initExportUI() {
   const downloadBtn = document.getElementById('btn-download');
   const menu = document.getElementById('download-menu');
 
-  // Toggle download menu
   downloadBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     menu.classList.toggle('show');
@@ -683,7 +1114,6 @@ function initExportUI() {
     menu.classList.remove('show');
   });
 
-  // Export actions
   document.getElementById('export-pdf').addEventListener('click', async () => {
     menu.classList.remove('show');
     const article = document.querySelector('.doc-article');
@@ -771,7 +1201,7 @@ function getDocumentTitle() {
 }
 
 /* ==========================================================================
-   8. Sample Loaders (Stage 6)
+   13. Sample Loaders (Stage 6)
    ========================================================================== */
 function initSamplesUI() {
   const sampleBtn = document.getElementById('btn-load-sample');
@@ -809,7 +1239,7 @@ function initSamplesUI() {
 }
 
 /* ==========================================================================
-   9. State Restoration & Toast Notifications
+   14. State Restoration & Toast Notifications
    ========================================================================== */
 function restoreState() {
   const s = state.get();
@@ -828,9 +1258,12 @@ function restoreState() {
   if (s.diagramLevel && diagramSelect) diagramSelect.value = s.diagramLevel;
 
   updateProviderSelectDropdown();
+  updateStatusBarProvider();
 
   if (s.markdownOutput) {
     renderPreview(s.markdownOutput);
+  } else {
+    renderPreview('');
   }
 }
 

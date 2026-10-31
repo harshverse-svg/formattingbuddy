@@ -1,10 +1,11 @@
 /**
  * FormattingBuddy - Text Chunking & Sequential Pipeline
- * Splits text into 1,500-2,500 word chunks at paragraph boundaries.
+ * Splits text into 1,500-2,500 word chunks at heading or page boundaries with small overlaps.
  * Coordinates sequential AI conversion, running summary, TOC building,
- * and automatic provider fallback.
+ * chunk-level caching in IndexedDB, and automatic provider fallback.
  */
 import { providers } from './providers.js';
+import { getCachedChunk, setCachedChunk } from './db.js';
 
 export function countWords(text) {
   if (!text) return 0;
@@ -13,75 +14,126 @@ export function countWords(text) {
 }
 
 /**
- * Splits plain text into chunks of 1,500 to 2,500 words at paragraph boundaries.
+ * Splits document text into chunks prioritizing headings or page breaks first,
+ * then 1,500 to 2,500 words with small overlaps.
  */
-export function chunkText(text, minWords = 1500, maxWords = 2500) {
+export function chunkText(text, minWords = 1500, maxWords = 2500, overlapWords = 50) {
   if (!text || !text.trim()) return [];
 
-  // Normalize line endings
-  const normalized = text.replace(/\r\n/g, '\n');
-  const paragraphs = normalized.split(/\n\s*\n/);
+  const normalized = text.replace(/\r\n/g, '\n').replace(/\f/g, '\n\n---\n\n');
+
+  // Step 1: Detect natural section or page boundaries:
+  // e.g. "## Slide ", "## Page ", "## Sheet: ", "---", or major Markdown headings "^# " / "^## "
+  const rawSections = splitByHeadingsOrPages(normalized);
 
   const chunks = [];
-  let currentParagraphs = [];
+  let currentGroup = [];
   let currentWordCount = 0;
+  let previousChunkTrailingWords = '';
 
-  for (let i = 0; i < paragraphs.length; i++) {
-    const p = paragraphs[i].trim();
-    if (!p) continue;
+  for (let sIdx = 0; sIdx < rawSections.length; sIdx++) {
+    const section = rawSections[sIdx].trim();
+    if (!section) continue;
 
-    const pWords = countWords(p);
+    const sWords = countWords(section);
 
-    // If a single paragraph is longer than maxWords, split it by sentence or lines
-    if (pWords > maxWords) {
-      if (currentParagraphs.length > 0) {
-        chunks.push(currentParagraphs.join('\n\n'));
-        currentParagraphs = [];
+    // If a single section is larger than maxWords, break it down by paragraphs
+    if (sWords > maxWords) {
+      if (currentGroup.length > 0) {
+        chunks.push(finalizeChunk(currentGroup.join('\n\n'), previousChunkTrailingWords));
+        previousChunkTrailingWords = extractTrailingWords(chunks[chunks.length - 1], overlapWords);
+        currentGroup = [];
         currentWordCount = 0;
       }
 
-      const sentences = p.match(/[^.!?]+[.!?]+(\s+|$)|[^.!?]+$/g) || [p];
-      let sentGroup = [];
-      let sentCount = 0;
-
-      for (const s of sentences) {
-        const sWords = countWords(s);
-        if (sentCount + sWords > maxWords && sentGroup.length > 0) {
-          chunks.push(sentGroup.join(' '));
-          sentGroup = [];
-          sentCount = 0;
-        }
-        sentGroup.push(s.trim());
-        sentCount += sWords;
-      }
-
-      if (sentGroup.length > 0) {
-        chunks.push(sentGroup.join(' '));
+      const subChunks = splitLongSectionByParagraphs(section, minWords, maxWords);
+      for (let k = 0; k < subChunks.length; k++) {
+        chunks.push(finalizeChunk(subChunks[k], previousChunkTrailingWords));
+        previousChunkTrailingWords = extractTrailingWords(chunks[chunks.length - 1], overlapWords);
       }
       continue;
     }
 
-    if (currentWordCount + pWords > maxWords && currentParagraphs.length > 0) {
-      chunks.push(currentParagraphs.join('\n\n'));
-      currentParagraphs = [p];
-      currentWordCount = pWords;
+    if (currentWordCount + sWords > maxWords && currentGroup.length > 0) {
+      chunks.push(finalizeChunk(currentGroup.join('\n\n'), previousChunkTrailingWords));
+      previousChunkTrailingWords = extractTrailingWords(chunks[chunks.length - 1], overlapWords);
+      currentGroup = [section];
+      currentWordCount = sWords;
     } else {
-      currentParagraphs.push(p);
-      currentWordCount += pWords;
-      if (currentWordCount >= minWords && i < paragraphs.length - 1) {
-        // We reached min threshold and are at a clean paragraph boundary
-        chunks.push(currentParagraphs.join('\n\n'));
-        currentParagraphs = [];
+      currentGroup.push(section);
+      currentWordCount += sWords;
+
+      if (currentWordCount >= minWords && sIdx < rawSections.length - 1) {
+        chunks.push(finalizeChunk(currentGroup.join('\n\n'), previousChunkTrailingWords));
+        previousChunkTrailingWords = extractTrailingWords(chunks[chunks.length - 1], overlapWords);
+        currentGroup = [];
         currentWordCount = 0;
       }
     }
   }
 
-  if (currentParagraphs.length > 0) {
-    chunks.push(currentParagraphs.join('\n\n'));
+  if (currentGroup.length > 0) {
+    chunks.push(finalizeChunk(currentGroup.join('\n\n'), previousChunkTrailingWords));
   }
 
   return chunks;
+}
+
+function splitByHeadingsOrPages(text) {
+  // Check if text has Markdown headings (# or ##) or slide/page dividers
+  const hasHeadings = /(?:^|\n)#{1,2}\s+[^\n]+/m.test(text);
+  const hasPageDividers = /(?:^|\n)(?:---|===|## Slide|## Page|## Sheet:)/m.test(text);
+
+  if (hasHeadings || hasPageDividers) {
+    // Split on heading or page boundaries while preserving the delimiter
+    const parts = text.split(/(?=\n#{1,2}\s+|\n---|\n===|\n## Slide|\n## Page|\n## Sheet:)/g);
+    return parts.filter(p => p.trim().length > 0);
+  }
+
+  // Fallback to paragraph splitting
+  return text.split(/\n\s*\n/).filter(p => p.trim().length > 0);
+}
+
+function splitLongSectionByParagraphs(section, minWords, maxWords) {
+  const paragraphs = section.split(/\n\s*\n/).filter(p => p.trim().length > 0);
+  const result = [];
+  let current = [];
+  let words = 0;
+
+  for (const p of paragraphs) {
+    const pCount = countWords(p);
+    if (words + pCount > maxWords && current.length > 0) {
+      result.push(current.join('\n\n'));
+      current = [p];
+      words = pCount;
+    } else {
+      current.push(p);
+      words += pCount;
+      if (words >= minWords) {
+        result.push(current.join('\n\n'));
+        current = [];
+        words = 0;
+      }
+    }
+  }
+
+  if (current.length > 0) {
+    result.push(current.join('\n\n'));
+  }
+  return result;
+}
+
+function extractTrailingWords(chunk, count) {
+  if (!chunk || count <= 0) return '';
+  const words = chunk.trim().split(/\s+/);
+  return words.slice(-count).join(' ');
+}
+
+function finalizeChunk(chunkText, overlapPrefix) {
+  const trimmed = chunkText.trim();
+  if (!overlapPrefix || !overlapPrefix.trim()) return trimmed;
+  // Prepend small overlap context marker for the AI to ensure seamless continuity
+  return `[Context from previous section: "...${overlapPrefix.trim()}..."]\n\n${trimmed}`;
 }
 
 export class ConversionPipeline {
@@ -133,7 +185,9 @@ Output only Markdown.`;
   }
 
   /**
-   * Run conversion starting from startIndex (default 0 or resumed chunk)
+   * Run conversion starting from startIndex (default 0 or resumed chunk).
+   * Checks IndexedDB chunk cache first by text hash so retries and switches
+   * never repeat finished work.
    */
   async run(startIndex = 0) {
     if (this.chunks.length === 0) {
@@ -165,6 +219,22 @@ Output only Markdown.`;
         throw new Error('Conversion cancelled by user.');
       }
 
+      const chunk = this.chunks[i];
+
+      // 1. Check if chunk is already cached in memory or IndexedDB
+      const cachedResult = this.chunkResults[i] || (await getCachedChunk(chunk));
+      if (cachedResult) {
+        this.chunkResults[i] = cachedResult;
+        this.extractMetadata(cachedResult);
+        this.onProgress({
+          chunkIndex: i + 1,
+          totalChunks: this.chunks.length,
+          status: `Restored cached section ${i + 1} of ${this.chunks.length}...`,
+          percent: Math.round(((i + 1) / this.chunks.length) * 100)
+        });
+        continue;
+      }
+
       this.onProgress({
         chunkIndex: i + 1,
         totalChunks: this.chunks.length,
@@ -172,7 +242,6 @@ Output only Markdown.`;
         percent: Math.round(((i) / this.chunks.length) * 100)
       });
 
-      const chunk = this.chunks[i];
       let userPrompt = '';
       if (i === 0) {
         userPrompt = `Convert this first part of the document into Markdown:\n\n${chunk}`;
@@ -196,6 +265,11 @@ Output only Markdown.`;
 
           this.chunkResults[i] = result;
           this.extractMetadata(result);
+
+          // Cache chunk in IndexedDB by SHA-256 text hash
+          const activeModel = providers.getSettings(currentProviderId).model || '';
+          await setCachedChunk(chunk, result, currentProviderId, activeModel);
+
           success = true;
         } catch (err) {
           lastError = err;
@@ -237,6 +311,8 @@ Output only Markdown.`;
   }
 
   extractMetadata(chunkMarkdown) {
+    if (!chunkMarkdown) return;
+
     // Collect headings
     const headingMatches = chunkMarkdown.match(/^(#{1,3})\s+(.+)$/gm);
     if (headingMatches) {
@@ -263,10 +339,13 @@ Output only Markdown.`;
 
   /**
    * Merges all converted chunk markdowns, removes duplicate adjacent headings,
-   * ensures single H1 title, and builds an accurate Table of Contents.
+   * ensures single H1 title, and cleans context wrappers.
    */
   mergeAndClean(results) {
     let combined = results.filter(Boolean).join('\n\n');
+
+    // Strip out any accidental leftover overlap context markers
+    combined = combined.replace(/\[Context from previous section:[\s\S]*?\]\n\n?/g, '');
 
     // Remove repeated identical headings that occur consecutively
     const lines = combined.split('\n');
@@ -292,4 +371,3 @@ Output only Markdown.`;
     return cleanedLines.join('\n');
   }
 }
-

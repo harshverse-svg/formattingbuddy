@@ -1,4 +1,4 @@
-const CACHE_NAME = 'formattingbuddy-v4';
+const CACHE_NAME = 'formattingbuddy-v5';
 
 const STATIC_ASSETS = [
   './',
@@ -10,6 +10,9 @@ const STATIC_ASSETS = [
   './js/crypto.js',
   './js/auth.js',
   './js/state.js',
+  './js/db.js',
+  './js/ocr.js',
+  './js/workers/parse-worker.js',
   './js/providers.js',
   './js/chunker.js',
   './js/markdown.js',
@@ -34,6 +37,15 @@ const STATIC_ASSETS = [
   './vendor/jspdf.umd.min.js',
   './vendor/html2canvas.min.js',
   './vendor/jszip.min.js',
+  './vendor/pdf.min.mjs',
+  './vendor/pdf.worker.min.mjs',
+  './vendor/mammoth.browser.min.js',
+  './vendor/xlsx.full.min.js',
+  './vendor/tesseract.min.js',
+  './vendor/tesseract-worker.min.js',
+  './vendor/tesseract-core.wasm.js',
+  './vendor/tesseract-core-simd.wasm',
+  './vendor/tesseract-core.wasm',
   './assets/icons/icon.svg',
   './assets/icons/wordmark.svg',
   './assets/icons/icon-192.png',
@@ -65,7 +77,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // For API provider calls (Gemini, Groq, OpenRouter, etc.), never cache or intercept with cache
+  // For AI provider calls (Gemini, Groq, OpenRouter, etc.), never cache or intercept with cache
   if (
     url.hostname.includes('googleapis.com') ||
     url.hostname.includes('groq.com') ||
@@ -96,31 +108,59 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Same-origin dynamic assets (HTML, js, css): Network First with Cache fallback
+  // Tessdata language data caching for offline OCR support
+  if (url.hostname.includes('tessdata.projectnaptha.com')) {
+    event.respondWith(
+      caches.open(CACHE_NAME).then((cache) => {
+        return cache.match(event.request).then((cachedResponse) => {
+          const fetchPromise = fetch(event.request).then((networkResponse) => {
+            if (networkResponse && networkResponse.status === 200) {
+              cache.put(event.request, networkResponse.clone());
+            }
+            return networkResponse;
+          }).catch(() => cachedResponse);
+          return cachedResponse || fetchPromise;
+        });
+      })
+    );
+    return;
+  }
+
+  // Same-origin dynamic assets (HTML, js, css, wasm): Network First with Cache fallback
   if (url.origin === self.location.origin) {
-    if (url.pathname.includes('/vendor/') || url.pathname.includes('/assets/')) {
-      // Static vendor assets: Cache First
-      event.respondWith(
-        caches.match(event.request).then((cached) => {
-          if (cached) return cached;
-          return fetch(event.request).then((res) => {
-            const clone = res.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-            return res;
-          });
-        })
-      );
-    } else {
-      // Application scripts, styles, and HTML: Network First
-      event.respondWith(
-        fetch(event.request).then((networkResponse) => {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
-            const clone = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseClone);
+            });
           }
           return networkResponse;
-        }).catch(() => caches.match(event.request))
-      );
-    }
+        })
+        .catch(() => {
+          return caches.match(event.request);
+        })
+    );
+    return;
   }
+
+  // Default: Cache first with Network fallback
+  event.respondWith(
+    caches.match(event.request).then((cachedResponse) => {
+      return (
+        cachedResponse ||
+        fetch(event.request).then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseClone);
+            });
+          }
+          return networkResponse;
+        })
+      );
+    })
+  );
 });

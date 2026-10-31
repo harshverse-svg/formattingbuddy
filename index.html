@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="FormattingBuddy - Convert long plain text into formatted documents with headings, tables, diagrams, charts, and maps.">
+  <meta name="description" content="FormattingBuddy - Turn messy text and documents into structured reports, guides, and manuals with headings, tables, diagrams, charts, and maps.">
   <meta name="theme-color" content="#4F5BD5">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://generativelanguage.googleapis.com https://api.groq.com https://openrouter.ai https://api.mistral.ai https://api.ollama.com https://api-inference.huggingface.co https://api.anthropic.com https://nominatim.openstreetmap.org https://tile.openstreetmap.org http://localhost:* https://*; font-src 'self';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval' blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://generativelanguage.googleapis.com https://api.groq.com https://openrouter.ai https://api.mistral.ai https://api.ollama.com https://api-inference.huggingface.co https://api.anthropic.com https://nominatim.openstreetmap.org https://tile.openstreetmap.org https://tessdata.projectnaptha.com http://localhost:* https://*; font-src 'self';">
 
-  <title>FormattingBuddy - Text to Document</title>
+  <title>FormattingBuddy - Document Structuring & Formatting</title>
 
   <!-- PWA Manifest & Icons -->
   <link rel="manifest" href="manifest.webmanifest">
@@ -29,6 +29,7 @@
   <script src="vendor/jspdf.umd.min.js"></script>
   <script src="vendor/html2canvas.min.js"></script>
   <script src="vendor/jszip.min.js"></script>
+  <script src="vendor/tesseract.min.js"></script>
 </head>
 <body>
   <!-- Splash Screen (Stage 2: 1s logo + tagline, 1x per session, skipped on reduced-motion) -->
@@ -64,6 +65,15 @@
           <span>Install</span>
         </button>
 
+        <!-- Help & FAQ Drawer -->
+        <button id="btn-open-help" class="btn btn-icon btn-outline" aria-label="Help and Documentation" title="Help & Documentation">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </button>
+
         <!-- Theme Toggle -->
         <button id="btn-theme-toggle" class="btn btn-icon btn-outline" aria-label="Toggle theme">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -72,7 +82,7 @@
         </button>
 
         <!-- Settings (API Keys) -->
-        <button id="btn-open-settings" class="btn btn-icon btn-outline" aria-label="Open Settings">
+        <button id="btn-open-settings" class="btn btn-icon btn-outline" aria-label="Open Settings" title="API Key Manager">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="3"></circle>
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
@@ -80,7 +90,7 @@
         </button>
 
         <!-- Lock App -->
-        <button id="btn-lock-app" class="btn btn-icon btn-outline" aria-label="Lock app">
+        <button id="btn-lock-app" class="btn btn-icon btn-outline" aria-label="Lock app" title="Lock workspace">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
             <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
@@ -88,7 +98,7 @@
         </button>
 
         <!-- Reset App -->
-        <button id="btn-reset-app" class="btn btn-sm btn-danger" aria-label="Reset app and wipe local data">
+        <button id="btn-reset-app" class="btn btn-sm btn-danger" aria-label="Reset app and wipe local data" title="Wipe local data and reset passcode">
           Reset
         </button>
       </div>
@@ -105,11 +115,11 @@
       <!-- Left Panel: Input & Settings -->
       <section class="panel panel-input active-tab" aria-label="Input Section">
         <div class="panel-header">
-          <span class="panel-title">Source Text</span>
+          <span class="panel-title">Source Document</span>
           <div class="panel-controls">
             <!-- Load Sample Dropdown -->
             <div class="dropdown">
-              <button id="btn-load-sample" class="btn btn-sm btn-outline">
+              <button id="btn-load-sample" class="btn btn-sm btn-outline" title="Load sample documents">
                 <span>Load Sample</span>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
               </button>
@@ -120,15 +130,15 @@
               </div>
             </div>
 
-            <button id="btn-browse-file" class="btn btn-sm btn-outline">Open File (.txt/.md)</button>
-            <input type="file" id="file-input" accept=".txt,.md" style="display:none;">
+            <button id="btn-browse-file" class="btn btn-sm btn-outline" title="Upload documents up to 20 MB">Open File (20 MB)</button>
+            <input type="file" id="file-input" accept=".pdf,.docx,.pptx,.xlsx,.xls,.csv,.txt,.md,.html,.json,.png,.jpg,.jpeg,.webp" style="display:none;">
           </div>
         </div>
 
         <div class="input-body">
-          <!-- Document options -->
+          <!-- Document options with Tooltips -->
           <div class="options-grid">
-            <div class="option-field">
+            <div class="option-field" title="Select format structure template for the final output">
               <label for="select-doctype">Document Type</label>
               <select id="select-doctype" class="select-input">
                 <option value="report">Executive Report</option>
@@ -139,10 +149,11 @@
               </select>
             </div>
 
-            <div class="option-field">
+            <div class="option-field" title="Target translation or output document language">
               <label for="select-language">Language</label>
               <select id="select-language" class="select-input">
                 <option value="English">English</option>
+                <option value="Hindi">Hindi (हिंदी)</option>
                 <option value="Spanish">Spanish</option>
                 <option value="French">French</option>
                 <option value="German">German</option>
@@ -151,7 +162,7 @@
               </select>
             </div>
 
-            <div class="option-field">
+            <div class="option-field" title="Controls frequency of diagrams, charts, and maps">
               <label for="select-diagram-level">Visual Enrichments</label>
               <select id="select-diagram-level" class="select-input">
                 <option value="balanced">Balanced (Recommended)</option>
@@ -163,13 +174,13 @@
 
           <!-- Dropzone and Text Editor -->
           <div class="dropzone-container" id="dropzone">
-            <textarea id="text-input" class="text-editor" placeholder="Paste your plain text here, or drag & drop a .txt or .md file (up to 2 MB)..."></textarea>
+            <textarea id="text-input" class="text-editor" placeholder="Paste text or drag & drop files up to 20 MB (PDF, Word DOCX, PowerPoint PPTX, Excel XLSX, Text, Images)..."></textarea>
             <div class="editor-footer">
               <div class="editor-footer-left">
                 <span id="word-count-badge">0 words</span>
-                <span>Max 2 MB</span>
+                <span>Max 20 MB</span>
               </div>
-              <span>Split in 1,500-2,500 word sections</span>
+              <span>1,500-2,500 words per section • Resave .doc/.ppt as .docx/.pptx</span>
             </div>
           </div>
         </div>
@@ -188,7 +199,7 @@
         <!-- Action Bar -->
         <div class="action-bar">
           <div class="action-bar-left">
-            <div class="provider-select-group">
+            <div class="provider-select-group" title="Select AI provider or use Auto-fallback on rate limits">
               <label for="provider-select" style="font-size:0.8rem;color:var(--text-secondary);font-weight:500;">Provider:</label>
               <select id="provider-select" class="select-input" style="min-width:180px;">
                 <option value="auto">Auto (fallback)</option>
@@ -198,7 +209,7 @@
 
           <div style="display:flex;gap:8px;">
             <button id="btn-cancel-pipeline" class="btn btn-outline" style="display:none;">Cancel</button>
-            <button id="btn-convert" class="btn btn-primary">
+            <button id="btn-convert" class="btn btn-primary" title="Start formatting document">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polygon points="5 3 19 12 5 21 5 3"></polygon>
               </svg>
@@ -239,6 +250,24 @@
 
         <div class="preview-body">
           <div class="preview-content">
+            <!-- Empty state when no formatted content exists -->
+            <div id="preview-empty-state" class="empty-state">
+              <div class="empty-state-icon">
+                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                  <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+              </div>
+              <h3 class="empty-state-title">Ready to Format</h3>
+              <p class="empty-state-desc">Upload a document up to 20 MB or paste plain text on the left, then click <strong>Convert</strong> to generate structured headings, tables, diagrams, and maps.</p>
+              <div class="empty-state-actions">
+                <button id="btn-empty-sample" class="btn btn-sm btn-outline">Load Process Sample</button>
+              </div>
+            </div>
+
             <!-- Table of Contents -->
             <nav id="toc-container" class="toc-box" style="display:none;" aria-label="Document Table of Contents">
               <div class="toc-title">Table of Contents</div>
@@ -254,6 +283,232 @@
         </div>
       </section>
     </main>
+
+    <!-- Persistent Bottom Status Bar (Stage 3) -->
+    <footer class="app-status-bar" id="app-status-bar">
+      <div class="status-bar-left">
+        <span class="status-bar-dot"></span>
+        <span id="status-bar-provider">Provider: Initializing...</span>
+      </div>
+      <div class="status-bar-right">
+        <span id="status-bar-storage">Storage: 0 files</span>
+        <button id="btn-clear-storage" class="btn btn-xs btn-outline" type="button" title="Clear stored files and cached chunk results">Clear stored files</button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Modal: First-Run Welcome Onboarding (Stage 3) -->
+  <div id="modal-welcome" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="welcome-modal-title">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="welcome-modal-title" class="modal-title">Welcome to FormattingBuddy</h2>
+      </div>
+      <div class="modal-body">
+        <p class="modal-note" style="margin-bottom:18px;">
+          Turn raw text and messy files into professional, structured documents with headings, tables, diagrams, and maps — 100% locally in your browser.
+        </p>
+
+        <div class="onboarding-steps">
+          <div class="onboarding-step-card">
+            <div class="onboarding-step-icon">🔑</div>
+            <div class="onboarding-step-content">
+              <strong>1. Add an AI API Key</strong>
+              <p>Configure Gemini, Groq, OpenRouter, Mistral, Ollama, Hugging Face, or Claude in Settings. Encrypted locally with Web Crypto AES-GCM.</p>
+            </div>
+          </div>
+
+          <div class="onboarding-step-card">
+            <div class="onboarding-step-icon">📂</div>
+            <div class="onboarding-step-content">
+              <strong>2. Drop Any Document (up to 20 MB)</strong>
+              <p>Upload PDF, Word (DOCX), PowerPoint (PPTX), Excel (XLSX), Markdown, Text, or scanned pages with built-in OCR.</p>
+            </div>
+          </div>
+
+          <div class="onboarding-step-card">
+            <div class="onboarding-step-icon">📥</div>
+            <div class="onboarding-step-content">
+              <strong>3. Export in One Click</strong>
+              <p>Download clean, publication-ready PDF (A4 with page numbers), styled Word (.docx), offline single-file HTML, or ZIP bundle.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="justify-content: flex-end;">
+        <button id="btn-welcome-start" class="btn btn-primary" type="button">Get Started</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Help / FAQ / About Drawer (Stage 3) -->
+  <div id="modal-help" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="help-modal-title">
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <h2 id="help-modal-title" class="modal-title">Documentation & FAQ</h2>
+        <button id="btn-close-help" class="btn btn-sm btn-outline" type="button">Close</button>
+      </div>
+      <div class="modal-body" style="max-height:70vh; overflow-y:auto;">
+        <!-- How It Works Section -->
+        <div class="help-section">
+          <h3 class="help-heading">How It Works</h3>
+          <p class="help-text">FormattingBuddy is a client-side document compiler designed to process long text and complex files cleanly:</p>
+          <div class="help-grid">
+            <div class="help-box">
+              <strong>1. Local Ingestion & Cleaning</strong>
+              <p>Files are unpacked in background Web Workers. Headers, footers, page numbering, and line hyphenation are normalized automatically.</p>
+            </div>
+            <div class="help-box">
+              <strong>2. Context-Aware Chunking</strong>
+              <p>Documents are sectioned into 1,500–2,500 word units at heading and page boundaries. Running summaries and heading lists ensure consistency.</p>
+            </div>
+            <div class="help-box">
+              <strong>3. Visual Enrichments</strong>
+              <p>Processes become Mermaid diagrams; statistical data becomes Chart.js charts; location lists become Leaflet maps.</p>
+            </div>
+            <div class="help-box">
+              <strong>4. Multi-Format Export</strong>
+              <p>Outputs are rendered to clean print-styled A4 PDF, styled Microsoft Word (.docx), offline self-contained HTML, or ZIP bundles.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Supported Files Section -->
+        <div class="help-section">
+          <h3 class="help-heading">Supported File Formats</h3>
+          <p class="help-text">Supports files up to 20 MB parsed entirely in your browser:</p>
+          <ul class="help-list">
+            <li><strong>PDF (.pdf):</strong> Native text extraction with automatic scanned page detection.</li>
+            <li><strong>Word (.docx):</strong> Converts headings, lists, tables, and styling directly into Markdown.</li>
+            <li><strong>PowerPoint (.pptx):</strong> Extracts slide titles, speaker content, and bulleted outlines.</li>
+            <li><strong>Excel & CSV (.xlsx, .xls, .csv):</strong> Formats worksheets as structured Markdown tables.</li>
+            <li><strong>Text & Web (.txt, .md, .html, .json):</strong> Clean text parsing with tag stripping and JSON tree formatting.</li>
+            <li><strong>Images (.png, .jpg, .jpeg, .webp):</strong> Processed via the Optical Character Recognition (OCR) engine.</li>
+          </ul>
+          <div class="help-note">
+            ⚠️ <strong>Legacy Formats:</strong> Older binary <code>.doc</code> and <code>.ppt</code> files are not supported directly. Please open them in Microsoft Office or LibreOffice and Save As <code>.docx</code> or <code>.pptx</code> before uploading.
+          </div>
+        </div>
+
+        <!-- Privacy & Security -->
+        <div class="help-section">
+          <h3 class="help-heading">Security & Device Privacy</h3>
+          <p class="help-text">FormattingBuddy has no backend, no server database, and zero analytics trackers:</p>
+          <ul class="help-list">
+            <li><strong>Local Encryption:</strong> Your API keys are encrypted using Web Crypto AES-GCM (256-bit) with PBKDF2 key derivation.</li>
+            <li><strong>Keys Never Leave Device:</strong> Keys are transmitted solely from your browser directly to the official endpoints of your chosen provider.</li>
+            <li><strong>Offline Shell:</strong> The service worker caches all static assets, scripts, and libraries for complete offline availability.</li>
+          </ul>
+        </div>
+
+        <!-- OCR Modes -->
+        <div class="help-section">
+          <h3 class="help-heading">Optical Character Recognition (OCR)</h3>
+          <p class="help-text">When scanned or non-searchable pages are detected, you can choose:</p>
+          <ul class="help-list">
+            <li><strong>Fast & Private (Local):</strong> Uses Tesseract.js in a WebAssembly worker. Zero data leaves your computer. Supports English and Hindi.</li>
+            <li><strong>Better Accuracy (AI Vision):</strong> Sends high-resolution page frames directly to Gemini 2.5 Flash for high-precision transcription.</li>
+          </ul>
+        </div>
+
+        <!-- About Section -->
+        <div class="help-section">
+          <h3 class="help-heading">About FormattingBuddy</h3>
+          <p class="help-text">Open-source static document structuring engine built with vanilla ES modules, Web Crypto, and Web Workers.</p>
+          <p class="help-text">GitHub Repository: <a href="https://github.com/harshverse-svg/formattingbuddy" target="_blank" rel="noopener noreferrer" style="color:var(--accent);">github.com/harshverse-svg/formattingbuddy</a></p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-help-done" class="btn btn-primary" type="button">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Pre-Conversion Estimator (Stage 4) -->
+  <div id="modal-estimator" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="estimator-modal-title">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="estimator-modal-title" class="modal-title">Document Formatting Plan</h2>
+        <button id="btn-close-estimator" class="btn btn-sm btn-outline" type="button">Cancel</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-note">Review document structure and estimated requests before starting conversion.</p>
+
+        <div class="estimator-metrics-grid">
+          <div class="estimator-metric-card">
+            <span class="estimator-metric-value" id="est-pages-count">1</span>
+            <span class="estimator-metric-label">Pages</span>
+          </div>
+          <div class="estimator-metric-card">
+            <span class="estimator-metric-value" id="est-chunks-count">1</span>
+            <span class="estimator-metric-label">Sections</span>
+          </div>
+          <div class="estimator-metric-card">
+            <span class="estimator-metric-value" id="est-calls-count">1</span>
+            <span class="estimator-metric-label">Est. API Calls</span>
+          </div>
+        </div>
+
+        <div class="option-field" style="margin-top:14px;">
+          <label for="est-page-range">Process Scope</label>
+          <select id="est-page-range" class="select-input">
+            <option value="all">Entire Document (All sections)</option>
+            <option value="first5">First 5 Pages / Sections</option>
+            <option value="first1">First Section (Quick test)</option>
+          </select>
+        </div>
+
+        <div id="est-large-warning" class="callout-warning" style="display:none; margin-top:14px;">
+          ⚠️ <strong>Large Document Notice:</strong> This document contains more than 10 sections (~<span id="est-large-calls">12</span> API calls). Ensure your active AI provider has sufficient rate limits and quota.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-estimator-cancel" class="btn btn-outline" type="button">Cancel</button>
+        <button id="btn-estimator-start" class="btn btn-primary" type="button">Start Formatting</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Scanned Document OCR Options (Stage 5) -->
+  <div id="modal-ocr" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="ocr-modal-title">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="ocr-modal-title" class="modal-title">Scanned Pages Detected</h2>
+      </div>
+      <div class="modal-body">
+        <p id="ocr-modal-desc" class="modal-note">
+          Detected pages without a digital text layer. Choose an OCR method to extract text before formatting:
+        </p>
+
+        <div class="ocr-mode-selector">
+          <label class="ocr-mode-card">
+            <input type="radio" name="ocr-mode" value="local" checked>
+            <div class="ocr-mode-info">
+              <strong>Fast & Private (Local Tesseract)</strong>
+              <p>Processes on-device using WebAssembly. No data leaves your computer. Supports English and Hindi.</p>
+              <span class="badge-tag">Uses client CPU</span>
+            </div>
+          </label>
+
+          <label class="ocr-mode-card">
+            <input type="radio" name="ocr-mode" value="vision">
+            <div class="ocr-mode-info">
+              <strong>Better Accuracy (AI Vision)</strong>
+              <p>Sends page snapshots to Gemini 2.5 Flash for high-fidelity text, handwriting, and layout recovery.</p>
+              <span class="badge-tag">Requires Gemini key</span>
+            </div>
+          </label>
+        </div>
+
+        <div class="option-field" style="margin-top:12px;">
+          <label for="ocr-page-range">Pages to OCR</label>
+          <input type="text" id="ocr-page-range" class="text-input" placeholder="e.g. 1-3 or All" value="All">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-ocr-skip" class="btn btn-outline" type="button">Skip OCR (Extract Available)</button>
+        <button id="btn-ocr-start" class="btn btn-primary" type="button">Run OCR</button>
+      </div>
+    </div>
   </div>
 
   <!-- Modal: Passcode Login & Setup (Stage 1) -->
