@@ -424,6 +424,12 @@ function initSettingsUI() {
       showToast('Please unlock the app to access Settings.', 'warning');
       return;
     }
+    const modalTitle = document.getElementById('settings-modal-title');
+    if (modalTitle) {
+      modalTitle.textContent = tabAppearance?.classList.contains('active')
+        ? 'Settings — Appearance'
+        : 'Settings — API Keys';
+    }
     renderAppearancePanel();
     renderProviderCards();
     modal.classList.add('active');
@@ -444,12 +450,14 @@ function initSettingsUI() {
   const panelAppearance = document.getElementById('panel-settings-appearance');
   const panelKeys = document.getElementById('panel-settings-keys');
 
+  const modalTitle = document.getElementById('settings-modal-title');
   if (tabAppearance && tabKeys) {
     tabAppearance.addEventListener('click', () => {
       tabAppearance.classList.add('active');
       tabKeys.classList.remove('active');
       if (panelAppearance) panelAppearance.style.display = 'block';
       if (panelKeys) panelKeys.style.display = 'none';
+      if (modalTitle) modalTitle.textContent = 'Settings — Appearance';
       renderAppearancePanel();
     });
 
@@ -458,6 +466,7 @@ function initSettingsUI() {
       tabAppearance.classList.remove('active');
       if (panelKeys) panelKeys.style.display = 'block';
       if (panelAppearance) panelAppearance.style.display = 'none';
+      if (modalTitle) modalTitle.textContent = 'Settings — API Keys';
       renderProviderCards();
     });
   }
@@ -474,10 +483,12 @@ function initSettingsUI() {
     noneCard.className = `wallpaper-card ${currentWp === 'none' ? 'active' : ''}`;
     noneCard.style.backgroundColor = 'var(--surface-raised)';
     noneCard.style.display = 'flex';
+    noneCard.style.flexDirection = 'column';
     noneCard.style.alignItems = 'center';
     noneCard.style.justifyContent = 'center';
+    noneCard.style.paddingBottom = '18px';
     noneCard.innerHTML = `
-      <span style="font-size:0.8rem; font-weight:600; color:var(--text);">None</span>
+      <div style="font-size:1.3rem; opacity:0.6; line-height:1;">⊘</div>
       <div class="wallpaper-card-name">Solid Ground</div>
     `;
     noneCard.addEventListener('click', () => {
@@ -560,14 +571,19 @@ function initSettingsUI() {
 
       // Custom color picker input
       const customColorWrap = document.createElement('label');
-      customColorWrap.style.display = 'flex';
+      customColorWrap.style.display = 'inline-flex';
       customColorWrap.style.alignItems = 'center';
       customColorWrap.style.gap = '6px';
       customColorWrap.style.cursor = 'pointer';
-      customColorWrap.style.fontSize = '0.78rem';
+      customColorWrap.style.fontSize = '0.8rem';
+      customColorWrap.style.fontWeight = '500';
       customColorWrap.style.color = 'var(--text-muted)';
+      customColorWrap.style.padding = '2px 8px 2px 4px';
+      customColorWrap.style.borderRadius = '9999px';
+      customColorWrap.style.border = '1px solid var(--border)';
+      customColorWrap.style.background = 'var(--surface)';
       customColorWrap.innerHTML = `
-        <input type="color" id="input-custom-accent" value="${currentAccent}" style="width:26px; height:26px; border:none; border-radius:9999px; cursor:pointer; background:transparent;">
+        <input type="color" id="input-custom-accent" value="${currentAccent}" style="width:22px; height:22px; border:none; border-radius:9999px; cursor:pointer; background:transparent; padding:0;">
         <span>Custom</span>
       `;
       const colorInput = customColorWrap.querySelector('input');
