@@ -1,0 +1,30 @@
+{
+  "name": "FormattingBuddy - Long Text to Formatted Document",
+  "short_name": "FormattingBuddy",
+  "description": "Convert long plain text into formatted documents with headings, tables, diagrams, charts, and maps.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0d0f12",
+  "theme_color": "#5B5BD6",
+  "icons": [
+    {
+      "src": "assets/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["productivity", "utilities"]
+}

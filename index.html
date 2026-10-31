@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="FormattingBuddy - Convert long plain text into formatted documents with headings, tables, diagrams, charts, and maps.">
+  <meta name="theme-color" content="#5B5BD6">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://generativelanguage.googleapis.com https://api.groq.com https://openrouter.ai https://api.mistral.ai https://api.ollama.com https://api-inference.huggingface.co https://api.anthropic.com https://nominatim.openstreetmap.org https://tile.openstreetmap.org http://localhost:* https://*; font-src 'self';">
+
+  <title>FormattingBuddy - Text to Document</title>
+
+  <!-- PWA Manifest & Icons -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="assets/icons/icon.svg">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+
+  <!-- Vendor Styles (Local files) -->
+  <link rel="stylesheet" href="vendor/leaflet.css">
+
+  <!-- Core App Stylesheet -->
+  <link rel="stylesheet" href="css/main.css">
+
+  <!-- Local Vendor Libraries (No CDN) -->
+  <script src="vendor/mermaid.min.js"></script>
+  <script src="vendor/chart.umd.min.js"></script>
+  <script src="vendor/leaflet.js"></script>
+  <script src="vendor/marked.umd.js"></script>
+  <script src="vendor/docx.iife.js"></script>
+  <script src="vendor/jspdf.umd.min.js"></script>
+  <script src="vendor/html2canvas.min.js"></script>
+  <script src="vendor/jszip.min.js"></script>
+</head>
+<body>
+  <div id="app-root">
+    <!-- Top Header -->
+    <header class="app-header">
+      <div class="brand">
+        <img src="assets/icons/icon.svg" alt="FormattingBuddy Logo" class="brand-icon">
+        <span>FormattingBuddy</span>
+      </div>
+
+      <div class="header-status">
+        <span class="status-dot"></span>
+        <span id="autosave-text">Ready</span>
+      </div>
+
+      <div class="header-actions">
+        <!-- Install App PWA button -->
+        <button id="btn-install-app" class="btn btn-sm btn-outline" style="display:none;" aria-label="Install app as PWA">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Install</span>
+        </button>
+
+        <!-- Theme Toggle -->
+        <button id="btn-theme-toggle" class="btn btn-icon btn-outline" aria-label="Toggle theme">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+
+        <!-- Settings (API Keys) -->
+        <button id="btn-open-settings" class="btn btn-icon btn-outline" aria-label="Open Settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+
+        <!-- Lock App -->
+        <button id="btn-lock-app" class="btn btn-icon btn-outline" aria-label="Lock app">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+        </button>
+
+        <!-- Reset App -->
+        <button id="btn-reset-app" class="btn btn-sm btn-danger" aria-label="Reset app and wipe local data">
+          Reset
+        </button>
+      </div>
+    </header>
+
+    <!-- Mobile Tabs (Visible on small screens) -->
+    <nav class="mobile-tabs" aria-label="View toggle">
+      <button class="tab-btn active" id="tab-input">Input Document</button>
+      <button class="tab-btn" id="tab-preview">Formatted Preview</button>
+    </nav>
+
+    <!-- Main Workspace (Desktop Split View: Input | Preview) -->
+    <main class="main-container">
+      <!-- Left Panel: Input & Settings -->
+      <section class="panel panel-input active-tab" aria-label="Input Section">
+        <div class="panel-header">
+          <span class="panel-title">Source Text</span>
+          <div class="panel-controls">
+            <!-- Load Sample Dropdown -->
+            <div class="dropdown">
+              <button id="btn-load-sample" class="btn btn-sm btn-outline">
+                <span>Load Sample</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
+              <div id="sample-menu" class="dropdown-menu">
+                <button class="dropdown-item" data-sample-id="process">⚙️ Process (Mermaid)</button>
+                <button class="dropdown-item" data-sample-id="data">📊 Data Heavy (Charts)</button>
+                <button class="dropdown-item" data-sample-id="places">🗺️ Locations (Maps)</button>
+              </div>
+            </div>
+
+            <button id="btn-browse-file" class="btn btn-sm btn-outline">Open File (.txt/.md)</button>
+            <input type="file" id="file-input" accept=".txt,.md" style="display:none;">
+          </div>
+        </div>
+
+        <div class="input-body">
+          <!-- Document options -->
+          <div class="options-grid">
+            <div class="option-field">
+              <label for="select-doctype">Document Type</label>
+              <select id="select-doctype" class="select-input">
+                <option value="report">Executive Report</option>
+                <option value="guide">Technical Guide</option>
+                <option value="briefing">Briefing Paper</option>
+                <option value="manual">Manual / SOP</option>
+                <option value="academic">Research Summary</option>
+              </select>
+            </div>
+
+            <div class="option-field">
+              <label for="select-language">Language</label>
+              <select id="select-language" class="select-input">
+                <option value="English">English</option>
+                <option value="Spanish">Spanish</option>
+                <option value="French">French</option>
+                <option value="German">German</option>
+                <option value="Chinese">Chinese</option>
+                <option value="Japanese">Japanese</option>
+              </select>
+            </div>
+
+            <div class="option-field">
+              <label for="select-diagram-level">Visual Enrichments</label>
+              <select id="select-diagram-level" class="select-input">
+                <option value="balanced">Balanced (Recommended)</option>
+                <option value="rich">Rich (Maximum visuals)</option>
+                <option value="minimal">Minimal (Key only)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Dropzone and Text Editor -->
+          <div class="dropzone-container" id="dropzone">
+            <textarea id="text-input" class="text-editor" placeholder="Paste your plain text here, or drag & drop a .txt or .md file (up to 2 MB)..."></textarea>
+            <div class="editor-footer">
+              <div class="editor-footer-left">
+                <span id="word-count-badge">0 words</span>
+                <span>Max 2 MB</span>
+              </div>
+              <span>Split in 1,500-2,500 word sections</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sequential Progress Bar -->
+        <div id="progress-container" class="progress-container">
+          <div class="progress-info">
+            <span id="progress-text">Processing section 1...</span>
+            <span id="progress-percent">0%</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div id="progress-bar-fill" class="progress-bar-fill"></div>
+          </div>
+        </div>
+
+        <!-- Action Bar -->
+        <div class="action-bar">
+          <div class="action-bar-left">
+            <div class="provider-select-group">
+              <label for="provider-select" style="font-size:0.8rem;color:var(--text-secondary);font-weight:500;">Provider:</label>
+              <select id="provider-select" class="select-input" style="min-width:180px;">
+                <option value="auto">Auto (fallback)</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:8px;">
+            <button id="btn-cancel-pipeline" class="btn btn-outline" style="display:none;">Cancel</button>
+            <button id="btn-convert" class="btn btn-primary">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+              <span>Convert</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Panel: Preview & Exports -->
+      <section class="panel panel-preview" aria-label="Preview Section">
+        <div class="panel-header">
+          <span class="panel-title">Formatted Document</span>
+          <div class="panel-controls">
+            <button id="btn-toggle-view" class="btn btn-sm btn-outline">View Markdown</button>
+
+            <!-- Download Dropdown -->
+            <div class="dropdown">
+              <button id="btn-download" class="btn btn-sm btn-primary">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                <span>Download</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
+              <div id="download-menu" class="dropdown-menu">
+                <button class="dropdown-item" id="export-pdf">📄 PDF Document (.pdf)</button>
+                <button class="dropdown-item" id="export-html">🌐 Offline HTML (.html)</button>
+                <button class="dropdown-item" id="export-docx">📝 Microsoft Word (.docx)</button>
+                <button class="dropdown-item" id="export-md">📑 Raw Markdown (.md)</button>
+                <button class="dropdown-item" id="export-zip">📦 Document Bundle (.zip)</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="preview-body">
+          <div class="preview-content">
+            <!-- Table of Contents -->
+            <nav id="toc-container" class="toc-box" style="display:none;" aria-label="Document Table of Contents">
+              <div class="toc-title">Table of Contents</div>
+              <ul id="toc-list" class="toc-list"></ul>
+            </nav>
+
+            <!-- Formatted HTML Preview Container -->
+            <div id="preview-container"></div>
+
+            <!-- Raw Markdown Viewer (Toggled) -->
+            <pre id="raw-markdown-viewer" class="raw-markdown-view"></pre>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Modal: Passcode Login & Setup (Stage 1) -->
+  <div id="modal-auth" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="auth-modal-title" class="modal-title">Create Passcode</h2>
+      </div>
+      <div class="modal-body">
+        <p id="auth-modal-desc" class="modal-note"></p>
+        
+        <div class="option-field">
+          <label for="auth-passcode">Device Passcode</label>
+          <input type="password" id="auth-passcode" class="text-input" placeholder="Enter at least 4 characters" autocomplete="current-password">
+        </div>
+
+        <div class="option-field" id="auth-confirm-group" style="display:none;">
+          <label for="auth-confirm-passcode">Confirm Passcode</label>
+          <input type="password" id="auth-confirm-passcode" class="text-input" placeholder="Repeat passcode" autocomplete="new-password">
+        </div>
+
+        <div id="auth-error" style="color:var(--danger); font-size:0.82rem; display:none;"></div>
+        
+        <div style="background:var(--surface-subtle); padding:10px 14px; border-radius:8px; font-size:0.78rem; color:var(--text-secondary); line-height:1.4;">
+          🔒 <strong>Privacy Notice:</strong> This passcode protects data on this device only. Passcode hashes and encrypted API keys are stored solely in your local browser storage and never transmitted to any server.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="auth-submit-btn" class="btn btn-primary" type="button">Set Passcode & Unlock</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: API Key Manager (Stage 2) -->
+  <div id="modal-settings" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <h2 id="settings-modal-title" class="modal-title">API Key Manager (Settings)</h2>
+        <button id="btn-close-settings" class="btn btn-sm btn-outline" type="button">Close</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-note">
+          Configure API credentials for document generation. Keys are AES-GCM encrypted using your device passcode and never logged or transmitted anywhere except directly to the chosen provider.
+        </p>
+
+        <div id="settings-providers-container" style="display:flex; flex-direction:column; gap:12px;"></div>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-done-settings" class="btn btn-primary" type="button">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notifications Container -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <!-- App Entrypoint Script -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

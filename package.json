@@ -1,0 +1,23 @@
+{
+  "name": "autoeditor",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "chart.js": "^4.6.1",
+    "docx": "^9.15.1",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
+    "jszip": "^3.10.2",
+    "leaflet": "^1.9.4",
+    "marked": "^18.1.2",
+    "mermaid": "^12.2.0"
+  }
+}
